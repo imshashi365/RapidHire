@@ -3,9 +3,11 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { connectToDatabase } from "@/lib/mongodb"
 import { ObjectId } from "mongodb"
-import Together from "together-ai"
+import OpenAI from "openai"
 
-const together = new Together() // auth defaults to process.env.TOGETHER_API_KEY
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+})
 
 export async function POST(req: Request) {
   try {
@@ -33,8 +35,8 @@ export async function POST(req: Request) {
 
     const { jobDescription, requirements, previousQuestions = [] } = interview
 
-    // Generate next question using Together AI
-    const response = await together.chat.completions.create({
+    // Generate next question using OpenAI
+    const response = await openai.chat.completions.create({
       messages: [
         {
           role: "system",
@@ -61,7 +63,7 @@ Based on this information, generate a relevant technical question that:
 Format your response as a single question without any additional text.`
         }
       ],
-      model: "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8",
+      model: "gpt-4-turbo-preview",
       temperature: 0.7,
       max_tokens: 200,
     })

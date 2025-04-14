@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
-export default function SignupPage() {
+function SignupContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const defaultRole = searchParams.get("role") || "company"
@@ -105,12 +105,12 @@ export default function SignupPage() {
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? "Creating account..." : "Sign Up"}
                 </Button>
-                <div className="text-center text-sm">
+                <p className="text-sm text-center">
                   Already have an account?{" "}
-                  <Link href="/login?role=company" className="text-primary underline-offset-4 hover:underline">
-                    Log in
+                  <Link href="/login" className="text-primary underline-offset-4 hover:underline">
+                    Login
                   </Link>
-                </div>
+                </p>
               </CardFooter>
             </form>
           </Card>
@@ -120,7 +120,7 @@ export default function SignupPage() {
           <Card>
             <CardHeader>
               <CardTitle>Candidate Sign Up</CardTitle>
-              <CardDescription>Create your candidate account to start your interview journey.</CardDescription>
+              <CardDescription>Create your candidate account to start applying for positions.</CardDescription>
             </CardHeader>
             <form onSubmit={(e) => handleSignup("candidate", e)}>
               <CardContent className="space-y-4">
@@ -129,7 +129,7 @@ export default function SignupPage() {
                 )}
                 <div className="space-y-2">
                   <Label htmlFor="candidate-name">Full Name</Label>
-                  <Input id="candidate-name" name="name" type="text" placeholder="John Smith" required />
+                  <Input id="candidate-name" name="name" type="text" placeholder="John Doe" required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="candidate-email">Email</Label>
@@ -148,17 +148,25 @@ export default function SignupPage() {
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? "Creating account..." : "Sign Up"}
                 </Button>
-                <div className="text-center text-sm">
+                <p className="text-sm text-center">
                   Already have an account?{" "}
-                  <Link href="/login?role=candidate" className="text-primary underline-offset-4 hover:underline">
-                    Log in
+                  <Link href="/login" className="text-primary underline-offset-4 hover:underline">
+                    Login
                   </Link>
-                </div>
+                </p>
               </CardFooter>
             </form>
           </Card>
         </TabsContent>
       </Tabs>
     </div>
+  )
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <SignupContent />
+    </Suspense>
   )
 } 

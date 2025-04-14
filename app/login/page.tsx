@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { signIn, useSession } from "next-auth/react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter()
   const { data: session, status } = useSession()
   const searchParams = useSearchParams()
@@ -113,7 +113,7 @@ export default function LoginPage() {
           <Card>
             <CardHeader>
               <CardTitle>Candidate Login</CardTitle>
-              <CardDescription>Access your candidate dashboard to view and manage your interviews.</CardDescription>
+              <CardDescription>Access your candidate dashboard to view and manage your applications.</CardDescription>
             </CardHeader>
             <form onSubmit={(e) => handleLogin("candidate", e)}>
               <CardContent className="space-y-4">
@@ -150,6 +150,14 @@ export default function LoginPage() {
         </TabsContent>
       </Tabs>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <LoginContent />
+    </Suspense>
   )
 }
 

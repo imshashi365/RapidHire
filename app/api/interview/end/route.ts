@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import Together from "together-ai"
+import OpenAI from "openai"
 import { connectToDatabase } from "@/lib/mongodb"
 
-const together = new Together() // auth defaults to process.env.TOGETHER_API_KEY
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+})
 
 export async function POST(req: Request) {
   try {
@@ -35,8 +37,8 @@ export async function POST(req: Request) {
     // Add final response to the list
     const allResponses = [...previousResponses, transcript]
 
-    // Generate interview feedback using Together AI
-    const response = await together.chat.completions.create({
+    // Generate interview feedback using OpenAI
+    const response = await openai.chat.completions.create({
       messages: [
         {
           role: "system",
@@ -62,7 +64,7 @@ Format your response as a JSON object with these keys:
 - weaknesses: string[]`
         }
       ],
-      model: "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8",
+      model: "gpt-4-turbo-preview",
       temperature: 0.7,
       max_tokens: 1024,
       response_format: { type: "json_object" }

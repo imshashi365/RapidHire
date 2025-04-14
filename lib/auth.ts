@@ -1,5 +1,5 @@
 import { NextAuthOptions } from "next-auth"
-import { MongoDBAdapter } from "@next-auth/mongodb-adapter"
+import { MongoDBAdapter } from "@auth/mongodb-adapter"
 import clientPromise from "@/lib/mongodb"
 import { connectToDatabase } from "@/lib/db"
 import CredentialsProvider from "next-auth/providers/credentials"

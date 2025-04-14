@@ -3,9 +3,11 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { WebPDFLoader } from "@langchain/community/document_loaders/web/pdf"
 import { Document } from "@langchain/core/documents"
-import Together from "together-ai"
+import OpenAI from "openai"
 
-const together = new Together() // auth defaults to process.env.TOGETHER_API_KEY
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+})
 
 export async function POST(req: Request) {
   try {
@@ -49,8 +51,8 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Could not extract text from file" }, { status: 400 })
       }
 
-      // Analyze resume using Together AI
-      const response = await together.chat.completions.create({
+      // Analyze resume using OpenAI
+      const response = await openai.chat.completions.create({
         messages: [
           {
             role: "system",
@@ -69,14 +71,14 @@ export async function POST(req: Request) {
             content: `Here is the resume text to analyze:\n\n${text}`
           }
         ],
-        model: "meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8",
+        model: "gpt-4-turbo-preview",
         temperature: 0.7,
         max_tokens: 1024,
         response_format: { type: "json_object" }
       })
 
       if (!response.choices?.[0]?.message?.content) {
-        throw new Error("No content received from Together AI")
+        throw new Error("No content received from OpenAI")
       }
 
       const content = response.choices[0].message.content
@@ -98,7 +100,7 @@ export async function POST(req: Request) {
   } catch (error) {
     console.error("Error analyzing resume:", error)
     return NextResponse.json(
-      { error: "Failed to analyze resume. Please try again." },
+      { error: "Failed to analyze resume" },
       { status: 500 }
     )
   }
