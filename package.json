@@ -12,6 +12,7 @@
     "@ai-sdk/openai": "latest",
     "@auth/core": "latest",
     "@auth/mongodb-adapter": "^3.8.0",
+    "@aws-sdk/client-s3": "^3.787.0",
     "@aws-sdk/credential-providers": "latest",
     "@hookform/resolvers": "^3.9.1",
     "@langchain/community": "^0.3.40",
