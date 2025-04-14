@@ -6,7 +6,7 @@ import { ObjectId } from "mongodb"
 
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
     // Get the session
@@ -19,7 +19,7 @@ export async function GET(
     }
 
     // Get the ID parameter
-    const id = await params.id
+    const { id } = await context.params
     if (!id) {
       return NextResponse.json(
         { error: "Position ID is required" },
