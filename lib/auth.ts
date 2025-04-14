@@ -1,66 +1,76 @@
 import { NextAuthOptions } from "next-auth"
-import CredentialsProvider from "next-auth/providers/credentials"
-import { MongoDBAdapter } from "@auth/mongodb-adapter"
+import { MongoDBAdapter } from "@next-auth/mongodb-adapter"
 import clientPromise from "@/lib/mongodb"
-import { compare } from "bcryptjs"
+import { connectToDatabase } from "@/lib/db"
+import CredentialsProvider from "next-auth/providers/credentials"
+import bcrypt from "bcryptjs"
 
 export const authOptions: NextAuthOptions = {
   adapter: MongoDBAdapter(clientPromise),
   session: {
-    strategy: "jwt",
-  },
-  pages: {
-    signIn: "/login",
+    strategy: "jwt"
   },
   providers: [
     CredentialsProvider({
       name: "credentials",
       credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
+        email: { label: "Email", type: "text" },
+        password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          return null
+          throw new Error("Invalid credentials")
         }
 
-        const client = await clientPromise
-        const db = client.db()
-        const user = await db.collection("users").findOne({ email: credentials.email })
+        const { db } = await connectToDatabase()
+        const user = await db.collection("users").findOne({
+          email: credentials.email
+        })
 
-        if (!user) {
-          return null
+        if (!user || !user?.password) {
+          throw new Error("Invalid credentials")
         }
 
-        const isValid = await compare(credentials.password, user.password)
+        const isCorrectPassword = await bcrypt.compare(
+          credentials.password,
+          user.password
+        )
 
-        if (!isValid) {
-          return null
+        if (!isCorrectPassword) {
+          throw new Error("Invalid credentials")
         }
 
         return {
           id: user._id.toString(),
           email: user.email,
           name: user.name,
-          role: user.role,
+          role: user.role
         }
-      },
-    }),
+      }
+    })
   ],
+  pages: {
+    signIn: "/login"
+  },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.role = user.role
-        token.id = user.id
+        return {
+          ...token,
+          role: user.role
+        }
       }
       return token
     },
     async session({ session, token }) {
-      if (session.user) {
-        session.user.role = token.role
-        session.user.id = token.id
+      return {
+        ...session,
+        user: {
+          ...session.user,
+          role: token.role
+        }
       }
-      return session
-    },
+    }
   },
+  secret: process.env.NEXTAUTH_SECRET
 } 
