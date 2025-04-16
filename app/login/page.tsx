@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from "react"
 import { signIn, useSession } from "next-auth/react"
 import Link from "next/link"
+import Image from "next/image"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -151,6 +152,9 @@ export default function LoginPage() {
   return (
     <div className="container flex h-screen w-screen flex-col items-center justify-center">
       <Link href="/" className="absolute left-4 top-4 md:left-8 md:top-8 flex items-center gap-2 font-bold text-xl">
+        <span className="flex items-center gap-2">
+          <Image src="/RapidHirelogo.png" alt="AI Interviewer" width={32} height={32} />
+        </span>
         <span className="text-primary">AI</span>Interviewer
       </Link>
 
