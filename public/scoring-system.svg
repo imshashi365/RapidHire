@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="800" height="600" viewBox="0 0 800 600" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Glowing Background -->
+  <defs>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#229799" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#229799" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  
+  <!-- Background Glow -->
+  <circle cx="400" cy="300" r="280" fill="url(#glow)"/>
+  
+  <!-- Main Circle -->
+  <circle cx="400" cy="300" r="250" fill="#0F172A" stroke="#229799" stroke-width="2" stroke-dasharray="4 4"/>
+  
+  <!-- Scoring Grid -->
+  <g transform="translate(400 300)">
+    <!-- Outer Ring -->
+    <circle r="200" fill="none" stroke="#229799" stroke-width="1" stroke-dasharray="2 4" opacity="0.3"/>
+    
+    <!-- Middle Ring -->
+    <circle r="150" fill="none" stroke="#229799" stroke-width="1.5" stroke-dasharray="4 6" opacity="0.4"/>
+    
+    <!-- Inner Ring -->
+    <circle r="100" fill="none" stroke="#229799" stroke-width="2" stroke-dasharray="6 8" opacity="0.5"/>
+    
+    <!-- Score Points -->
+    <g>
+      <!-- Top Score Point -->
+      <circle cy="-180" r="8" fill="#229799" opacity="0.9"/>
+      <path d="M0 -180 L10 -165 L0 -170 L-10 -165 Z" fill="#229799" opacity="0.9"/>
+      
+      <!-- Right Score Point -->
+      <circle cx="180" r="8" fill="#229799" opacity="0.9"/>
+      <path d="M180 0 L165 10 L170 0 L165 -10 Z" fill="#229799" opacity="0.9"/>
+      
+      <!-- Bottom Score Point -->
+      <circle cy="180" r="8" fill="#229799" opacity="0.9"/>
+      <path d="M0 180 L-10 165 L0 170 L10 165 Z" fill="#229799" opacity="0.9"/>
+      
+      <!-- Left Score Point -->
+      <circle cx="-180" r="8" fill="#229799" opacity="0.9"/>
+      <path d="M-180 0 L-165 -10 L-170 0 L-165 10 Z" fill="#229799" opacity="0.9"/>
+    </g>
+    
+    <!-- Central Elements -->
+    <circle r="70" fill="#229799" opacity="0.1"/>
+    <circle r="50" fill="#229799" opacity="0.15"/>
+    <circle r="30" fill="#229799" opacity="0.2"/>
+    
+    <!-- Central Icon -->
+    <path d="M-20 -20L20 -20L20 20L-20 20Z" fill="none" stroke="#229799" stroke-width="3" opacity="0.9"/>
+    <path d="M-10 0L0 10L15 -5" stroke="#229799" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" opacity="0.9"/>
+  </g>
+  
+  <!-- Connection Lines -->
+  <g stroke="#229799" stroke-width="1" opacity="0.2">
+    <line x1="400" y1="50" x2="400" y2="550"/>
+    <line x1="150" y1="300" x2="650" y2="300"/>
+    <line x1="250" y1="150" x2="550" y2="450"/>
+    <line x1="250" y1="450" x2="550" y2="150"/>
+  </g>
+  
+  <!-- Decorative Dots -->
+  <g fill="#229799">
+    <circle cx="400" cy="50" r="3" opacity="0.6"/>
+    <circle cx="400" cy="550" r="3" opacity="0.6"/>
+    <circle cx="150" cy="300" r="3" opacity="0.6"/>
+    <circle cx="650" cy="300" r="3" opacity="0.6"/>
+    <circle cx="250" cy="150" r="3" opacity="0.6"/>
+    <circle cx="550" cy="450" r="3" opacity="0.6"/>
+    <circle cx="250" cy="450" r="3" opacity="0.6"/>
+    <circle cx="550" cy="150" r="3" opacity="0.6"/>
+  </g>
+</svg> 

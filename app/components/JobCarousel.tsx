@@ -32,19 +32,26 @@ export function JobCarousel() {
   useEffect(() => {
     const fetchJobs = async () => {
       try {
-        const response = await fetch('/api/positions')
+        setIsLoading(true)
+        const response = await fetch('/api/positions/all', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        })
+        
         const data = await response.json()
         
         if (!data.success) {
           throw new Error(data.error || 'Failed to fetch positions')
         }
         
-        // Debug log for the first position's salary
-        if (data.positions.length > 0) {
-          console.log('First position salary:', data.positions[0].salary)
-        }
+        // Sort positions by creation date (newest first)
+        const sortedJobs = (data.positions || []).sort((a: Job, b: Job) => {
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        })
         
-        setJobs(data.positions)
+        setJobs(sortedJobs)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch positions')
         console.error('Error fetching positions:', err)
@@ -82,10 +89,11 @@ export function JobCarousel() {
     if (jobs.length === 0) return
     
     setDirection(newDirection)
+    const maxIndex = Math.max(0, jobs.length - 3)
     setCurrentIndex((prevIndex) => {
-      let newIndex = prevIndex + newDirection
-      if (newIndex < 0) newIndex = jobs.length - 1
-      if (newIndex >= jobs.length) newIndex = 0
+      let newIndex = prevIndex + (newDirection * 3)
+      if (newIndex < 0) newIndex = maxIndex
+      if (newIndex > maxIndex) newIndex = 0
       return newIndex
     })
   }
@@ -104,47 +112,19 @@ export function JobCarousel() {
   }
 
   const formatSalary = (salary: Job['salary']) => {
-    // Debug log
-    console.log('Formatting salary:', salary, 'Type:', typeof salary)
+    if (!salary) return 'Salary not specified'
 
-    // If salary is undefined or null
-    if (!salary) {
-      return 'Salary not specified'
-    }
+    if (typeof salary === 'string') return salary
 
-    // If salary is a string, return it directly
-    if (typeof salary === 'string') {
-      return salary
-    }
-
-    // If salary is a number, format it
-    if (typeof salary === 'number') {
+    if (typeof salary === 'object' && 'min' in salary && 'max' in salary) {
       const formatter = new Intl.NumberFormat('en-US', {
         style: 'currency',
-        currency: 'USD',
+        currency: salary.currency || 'USD',
         maximumFractionDigits: 0
       })
-      return formatter.format(salary)
+      return `${formatter.format(salary.min)} - ${formatter.format(salary.max)}`
     }
 
-    // If salary is an object with the new format
-    if (typeof salary === 'object') {
-      try {
-        const formatter = new Intl.NumberFormat('en-US', {
-          style: 'currency',
-          currency: salary.currency || 'USD',
-          maximumFractionDigits: 0
-        })
-        return `${formatter.format(salary.min)} - ${formatter.format(salary.max)}`
-      } catch (error) {
-        console.error('Error formatting salary object:', error)
-        if ('min' in salary && 'max' in salary) {
-          return `${salary.min} - ${salary.max} ${salary.currency || 'USD'}`
-        }
-      }
-    }
-
-    // Fallback
     return 'Salary not specified'
   }
 
@@ -191,6 +171,8 @@ export function JobCarousel() {
     )
   }
 
+  const visibleJobs = jobs.slice(currentIndex, currentIndex + 3)
+
   return (
     <div className="relative w-full max-w-5xl mx-auto px-4">
       <div className="flex items-center justify-between mb-8">
@@ -201,6 +183,7 @@ export function JobCarousel() {
             size="icon"
             onClick={() => paginate(-1)}
             className="border-[#229799] text-[#229799] hover:bg-[#229799] hover:text-white"
+            disabled={currentIndex === 0}
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -209,6 +192,7 @@ export function JobCarousel() {
             size="icon"
             onClick={() => paginate(1)}
             className="border-[#229799] text-[#229799] hover:bg-[#229799] hover:text-white"
+            disabled={currentIndex >= jobs.length - 3}
           >
             <ArrowRight className="h-4 w-4" />
           </Button>
@@ -216,7 +200,7 @@ export function JobCarousel() {
       </div>
 
       <div className="relative h-[400px] overflow-hidden">
-        <AnimatePresence initial={false} custom={direction}>
+        <AnimatePresence initial={false} custom={direction} mode="wait">
           <motion.div
             key={currentIndex}
             custom={direction}
@@ -228,32 +212,20 @@ export function JobCarousel() {
               x: { type: "spring", stiffness: 300, damping: 30 },
               opacity: { duration: 0.2 }
             }}
-            drag="x"
-            dragConstraints={{ left: 0, right: 0 }}
-            dragElastic={1}
-            onDragEnd={(_, info: PanInfo) => {
-              const swipe = swipePower(info.offset.x, info.velocity.x)
-              if (swipe < -swipeConfidenceThreshold) {
-                paginate(1)
-              } else if (swipe > swipeConfidenceThreshold) {
-                paginate(-1)
-              }
-            }}
             className="absolute w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
           >
-            {[
-              jobs[currentIndex],
-              jobs[(currentIndex + 1) % jobs.length],
-              jobs[(currentIndex + 2) % jobs.length]
-            ].map((job) => (
-              <Card key={job._id} className="bg-black/50 border border-[#229799]/20 backdrop-blur-sm hover:border-[#229799]/50 transition-all duration-300">
+            {visibleJobs.map((job, i) => (
+              <Card 
+                key={`${job._id}-${i}`}
+                className="bg-black/50 border border-[#229799]/20 backdrop-blur-sm hover:border-[#229799]/50 transition-all duration-300"
+              >
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div>
-                      <h3 className="text-lg font-semibold text-white mb-1">{job.title}</h3>
+                      <h3 className="text-lg font-semibold text-white mb-1">{job.title || 'Untitled Position'}</h3>
                       <div className="flex items-center text-gray-400">
                         <Building2 className="h-4 w-4 mr-1" />
-                        <span>{job.companyName}</span>
+                        <span>{job.companyName || 'Company Name Not Available'}</span>
                       </div>
                     </div>
                   </div>
@@ -265,12 +237,12 @@ export function JobCarousel() {
                     </div>
                     <div className="flex items-center text-gray-400">
                       <MapPin className="h-4 w-4 mr-1" />
-                      <span>{job.location}</span>
+                      <span>{job.location || 'Location Not Specified'}</span>
                     </div>
                     <div className="flex items-center">
                       <Briefcase className="h-4 w-4 mr-1" />
-                      <span className={getWorkLocationColor(job.workLocation)}>
-                        {job.workLocation.charAt(0).toUpperCase() + job.workLocation.slice(1)}
+                      <span className={getWorkLocationColor(job.workLocation || 'remote')}>
+                        {(job.workLocation || 'remote').charAt(0).toUpperCase() + (job.workLocation || 'remote').slice(1)}
                       </span>
                     </div>
                   </div>
@@ -289,19 +261,31 @@ export function JobCarousel() {
       </div>
 
       <div className="flex justify-center mt-8">
-        {jobs.map((_, index) => (
+        {Array.from({ length: Math.ceil(jobs.length / 3) }).map((_, index) => (
           <button
-            key={index}
+            key={`dot-${index}`}
             onClick={() => {
-              setDirection(index > currentIndex ? 1 : -1)
-              setCurrentIndex(index)
+              setDirection(index > Math.floor(currentIndex / 3) ? 1 : -1)
+              setCurrentIndex(index * 3)
             }}
             className={`h-2 w-2 rounded-full mx-1 transition-all duration-300 ${
-              index === currentIndex ? 'bg-[#229799] w-4' : 'bg-gray-500'
+              Math.floor(currentIndex / 3) === index ? 'bg-[#229799] w-4' : 'bg-gray-500'
             }`}
           />
         ))}
       </div>
+
+      {jobs.length > 3 && (
+        <div className="mt-8 text-center">
+          <Button
+            variant="outline"
+            className="border-[#229799] text-[#229799] hover:bg-[#229799] hover:text-white"
+            onClick={() => window.location.href = '/positions'}
+          >
+            View All Positions →
+          </Button>
+        </div>
+      )}
     </div>
   )
 } 

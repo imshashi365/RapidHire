@@ -4,15 +4,26 @@ import { useState, useEffect } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
 import { toast } from "sonner"
 import { use } from "react"
-import { Briefcase, MapPin, Clock, DollarSign, Building, Calendar, Award, FileText, IndianRupee, ArrowRight, Loader2, CheckCircle, Send } from "lucide-react"
+import { 
+  Briefcase, 
+  MapPin, 
+  Clock, 
+  Building, 
+  Calendar, 
+  Award, 
+  IndianRupee, 
+  Loader2, 
+  CheckCircle, 
+  Send,
+  Users,
+  GraduationCap
+} from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
-import { MobileMenu } from "@/components/ui/mobile-menu"
 
 interface Position {
   _id: string
@@ -23,7 +34,6 @@ interface Position {
   workLocation: string
   description: string
   requirements: string[]
-  questions?: string[]
   minExperience: number
   maxExperience: number
   salaryRange: {
@@ -35,11 +45,6 @@ interface Position {
   lastDate: string
   createdBy: {
     name: string
-  }
-  salary?: {
-    min: number
-    max: number
-    currency: string
   }
 }
 
@@ -66,18 +71,16 @@ const PositionPage = ({ params }: PositionPageProps) => {
         const response = await fetch(`/api/positions/${id}`)
         
         if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || "Failed to fetch position")
+          throw new Error("Failed to fetch position details")
         }
 
         const data = await response.json()
         
-        if (!data) {
-          throw new Error("Position not found")
+        if (!data.success) {
+          throw new Error(data.error || "Position not found")
         }
 
-        console.log('Fetched position:', data) // Debug log
-        setPosition(data)
+        setPosition(data.position)
         setError(null)
       } catch (err) {
         console.error("Error fetching position:", err)
@@ -98,14 +101,14 @@ const PositionPage = ({ params }: PositionPageProps) => {
         return
       }
 
-        try {
-          const response = await fetch(`/api/applications/check?positionId=${id}`)
-          if (response.ok) {
-            const data = await response.json()
-            setHasApplied(data.hasApplied)
-          }
-        } catch (error) {
-          console.error("Error checking application status:", error)
+      try {
+        const response = await fetch(`/api/applications/check?positionId=${id}`)
+        if (response.ok) {
+          const data = await response.json()
+          setHasApplied(data.hasApplied)
+        }
+      } catch (error) {
+        console.error("Error checking application status:", error)
       }
     }
 
@@ -139,15 +142,11 @@ const PositionPage = ({ params }: PositionPageProps) => {
       const data = await response.json()
 
       if (!response.ok) {
-        if (response.status === 400 && data.error === "You have already applied for this position") {
-          toast.error("You have already applied for this position")
-          router.push("/dashboard/candidate/interviews")
-          return
-        }
         throw new Error(data.error || "Failed to apply for position")
       }
 
-      toast.success("Application submitted successfully")
+      toast.success("Application submitted successfully!")
+      setHasApplied(true)
       router.push("/dashboard/candidate/interviews")
     } catch (error) {
       console.error("Error applying for position:", error)
@@ -157,47 +156,22 @@ const PositionPage = ({ params }: PositionPageProps) => {
     }
   }
 
-  const formatSalary = (position: Position) => {
-    // Check for salaryRange first
-    if (position.salaryRange?.min && position.salaryRange?.max) {
-      return `₹${position.salaryRange.min}L - ₹${position.salaryRange.max}L`
-    }
-    // Fallback to salary if salaryRange is not available
-    if (position.salary?.min && position.salary?.max) {
-      const currency = position.salary.currency || '₹'
-      return `${currency}${position.salary.min}L - ${currency}${position.salary.max}L`
-    }
-    // Return a default message if no salary information is available
-    return "Salary not specified"
-  }
-
-  const getWorkLocationColor = (workLocation: string) => {
-    switch (workLocation.toLowerCase()) {
-      case 'remote':
-        return 'text-green-500'
-      case 'hybrid':
-        return 'text-blue-500'
-      case 'onsite':
-        return 'text-orange-500'
-      default:
-        return 'text-gray-500'
-    }
-  }
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     )
   }
 
-  if (!position) {
+  if (error || !position) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen space-y-4">
+      <div className="flex flex-col items-center justify-center min-h-screen space-y-4 p-4">
         <div className="text-4xl">😕</div>
-        <h1 className="text-2xl font-bold">Position Not Found</h1>
-        <p className="text-gray-500">The position you're looking for doesn't exist or has been removed.</p>
+        <h1 className="text-2xl font-bold text-center">Position Not Found</h1>
+        <p className="text-gray-500 text-center max-w-md">
+          {error || "The position you're looking for doesn't exist or has been removed."}
+        </p>
         <Button variant="outline" onClick={() => router.push("/positions")}>
           Browse Other Positions
         </Button>
@@ -208,154 +182,192 @@ const PositionPage = ({ params }: PositionPageProps) => {
   return (
     <div className="flex flex-col min-h-screen bg-black text-white relative">
       {/* Grid Background */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#229799/30_30px,transparent_1px),linear-gradient(to_bottom,#229799/3_1px,transparent_1px)] bg-[size:44px_44px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_110%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#229799/30_1px,transparent_1px),linear-gradient(to_bottom,#229799/3_1px,transparent_1px)] bg-[size:44px_44px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_110%)]" />
 
+      {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-black/95 backdrop-blur supports-[backdrop-filter]:bg-black/60 border-b border-[#229799]/20">
         <div className="container flex h-14 items-center justify-between">
           <div className="flex items-center gap-2 font-bold text-xl">
-            <span className="flex items-center gap-2">
-              <Image src="/RapidHirelogo.png" alt="AI Interviewer" width={122} height={72} />
-            </span>
-              </div>
+            <Link href="/">
+              <Image src="/RapidHirelogo.png" alt="RapidHire" width={122} height={72} />
+            </Link>
+          </div>
           <nav className="hidden md:flex items-center gap-6">
-            <Link href="#features" className="text-sm font-medium text-gray-300 hover:text-[#229799] transition-colors">
+            <Link href="/#features" className="text-sm font-medium text-gray-300 hover:text-[#229799] transition-colors">
               Features
             </Link>
-            <Link href="#how-it-works" className="text-sm font-medium text-gray-300 hover:text-[#229799] transition-colors">
+            <Link href="/#how-it-works" className="text-sm font-medium text-gray-300 hover:text-[#229799] transition-colors">
               How It Works
             </Link>
-            <Link href="#features" className="text-sm font-medium text-gray-300 hover:text-[#229799] transition-colors">
+            <Link href="/positions" className="text-sm font-medium text-gray-300 hover:text-[#229799] transition-colors">
               Jobs Portal
             </Link>
-            <Link href="#pricing" className="text-sm font-medium text-gray-300 hover:text-[#229799] transition-colors">
+            <Link href="/#pricing" className="text-sm font-medium text-gray-300 hover:text-[#229799] transition-colors">
               Pricing
             </Link>
           </nav>
           <div className="flex items-center gap-4">
-            <Link href="/login">
-              <Button variant="outline" className="border-[#229799] text-[#229799] hover:bg-[#229799] hover:text-white">
-                Log In
-              </Button>
-            </Link>
-            <Link href="/signup">
-              <Button className="bg-[#229799] text-white hover:bg-[#229799]/90">Sign Up</Button>
-            </Link>
+            {!session?.user ? (
+              <>
+                <Link href="/login">
+                  <Button variant="outline" className="border-[#229799] text-[#229799] hover:bg-[#229799] hover:text-white">
+                    Log In
+                  </Button>
+                </Link>
+                <Link href="/signup">
+                  <Button className="bg-[#229799] text-white hover:bg-[#229799]/90">
+                    Sign Up
+                  </Button>
+                </Link>
+              </>
+            ) : (
+              <Link href="/dashboard">
+                <Button className="bg-[#229799] text-white hover:bg-[#229799]/90">
+                  Dashboard
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
       </header>
 
-      <main className="flex-1 relative pt-14">
+      {/* Main Content */}
+      <main className="flex-1 relative pt-20">
         <div className="container mx-auto px-4 py-8">
-          {isLoading ? (
-            <div className="flex justify-center items-center min-h-[60vh]">
-              <Loader2 className="w-8 h-8 animate-spin" />
-            </div>
-          ) : error ? (
-            <div className="text-center py-12">
-              <h2 className="text-2xl font-semibold text-red-600 mb-2">Error</h2>
-              <p className="text-gray-600">{error}</p>
-            </div>
-          ) : position ? (
-            <div className="max-w-4xl mx-auto">
-              <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 mb-8">
-                <div className="flex justify-between items-start mb-6">
-                  <div>
-                    <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                      {position.title}
-                    </h1>
-                    <p className="text-lg text-gray-600 dark:text-gray-300">
-                      {position.companyName}
-                    </p>
-          </div>
-                  <div className="flex flex-col items-end">
-                    <Badge variant="outline" className="mb-2">
-                      {position.type}
-                    </Badge>
-                    <Badge variant="secondary">
-                      {position.location}
-                    </Badge>
+          <Card className="max-w-4xl mx-auto bg-black/50 backdrop-blur-sm border-[#229799]/20">
+            <CardContent className="p-8">
+              {/* Header Section */}
+              <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-8">
+                <div>
+                  <h1 className="text-3xl font-bold mb-2 text-white">{position.title}</h1>
+                  <div className="flex items-center gap-2 text-gray-300">
+                    <Building className="w-4 h-4" />
+                    <span>{position.companyName}</span>
                   </div>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                  <div className="flex items-center">
-                    <Building className="w-5 h-5 mr-2 text-gray-500" />
-                    <span className="text-gray-600 dark:text-gray-300">
-                      {position.department}
-                    </span>
-                  </div>
-                  <div className="flex items-center">
-                    <DollarSign className="w-5 h-5 mr-2 text-gray-500" />
-                    <span className="text-gray-600 dark:text-gray-300">
-                      {formatSalary(position)}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="prose dark:prose-invert max-w-none mb-8">
-                  <h2 className="text-xl font-semibold mb-4">Description</h2>
-                  <div className="text-gray-600 dark:text-gray-300 whitespace-pre-wrap">
-                    {position.description}
-                  </div>
-                </div>
-
-                <div className="prose dark:prose-invert max-w-none mb-8">
-                  <h2 className="text-xl font-semibold mb-4">Requirements</h2>
-                  <div className="text-gray-600 dark:text-gray-300 whitespace-pre-wrap">
-                    {position.requirements.map((req, index) => (
-                      <li key={index}>{req}</li>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="border-t dark:border-gray-700 pt-6">
-                  {session?.user?.role === "candidate" ? (
-                    hasApplied ? (
-                      <div className="flex items-center justify-center bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
-                        <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 mr-2" />
-                        <span className="text-green-600 dark:text-green-400">
-                          You have already applied for this position
-                        </span>
-                      </div>
-                    ) : (
-                      <Button
-                        className="w-full md:w-auto"
-                        onClick={handleApply}
-                        disabled={isApplying}
-                      >
-                        {isApplying ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Applying...
-                          </>
-                        ) : (
-                          <>
-                            <Send className="w-4 h-4 mr-2" />
-                            Apply Now
-                          </>
-                        )}
-                      </Button>
-                    )
-                  ) : !session?.user ? (
-                    <div className="text-center">
-                      <p className="text-gray-600 dark:text-gray-300 mb-4">
-                        Sign in as a candidate to apply for this position
-                      </p>
-                      <Button
-                        variant="outline"
-                        onClick={() => router.push("/login")}
-                      >
-                        Sign In
-                      </Button>
-                  </div>
-                  ) : null}
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="secondary" className="text-sm bg-[#229799]/20 text-[#229799]">
+                    {position.type}
+                  </Badge>
+                  <Badge variant="outline" className={`text-sm border-[#229799]/20 ${
+                    position.workLocation.toLowerCase() === 'remote' ? 'bg-green-900/20 text-green-400' :
+                    position.workLocation.toLowerCase() === 'hybrid' ? 'bg-blue-900/20 text-blue-400' :
+                    'bg-orange-900/20 text-orange-400'
+                  }`}>
+                    {position.workLocation}
+                  </Badge>
                 </div>
               </div>
-            </div>
-          ) : null}
+
+              {/* Key Details Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                <div className="flex items-center gap-3">
+                  <MapPin className="w-5 h-5 text-[#229799]" />
+                  <div>
+                    <p className="text-sm text-gray-400">Location</p>
+                    <p className="font-medium text-white">{position.location}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Users className="w-5 h-5 text-[#229799]" />
+                  <div>
+                    <p className="text-sm text-gray-400">Department</p>
+                    <p className="font-medium text-white">{position.department}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <GraduationCap className="w-5 h-5 text-[#229799]" />
+                  <div>
+                    <p className="text-sm text-gray-400">Experience</p>
+                    <p className="font-medium text-white">{position.minExperience} - {position.maxExperience} years</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <IndianRupee className="w-5 h-5 text-[#229799]" />
+                  <div>
+                    <p className="text-sm text-gray-400">Salary Range</p>
+                    <p className="font-medium text-white">₹{position.salaryRange.min}L - ₹{position.salaryRange.max}L</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Calendar className="w-5 h-5 text-[#229799]" />
+                  <div>
+                    <p className="text-sm text-gray-400">Last Date to Apply</p>
+                    <p className="font-medium text-white">{new Date(position.lastDate).toLocaleDateString()}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Description Section */}
+              <div className="mb-8">
+                <h2 className="text-xl font-semibold mb-4 text-white">About the Role</h2>
+                <div className="prose prose-invert max-w-none">
+                  {position.description.split('\n').map((paragraph, index) => (
+                    paragraph.trim() && <p key={index} className="mb-4 text-gray-300">{paragraph}</p>
+                  ))}
+                </div>
+              </div>
+
+              {/* Requirements Section */}
+              <div className="mb-8">
+                <h2 className="text-xl font-semibold mb-4 text-white">Requirements</h2>
+                <ul className="list-disc pl-5 space-y-2 text-gray-300">
+                  {position.requirements?.map((req, index) => (
+                    <li key={index}>{req}</li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Apply Section */}
+              <div className="border-t border-[#229799]/20 pt-6 mt-8">
+                {session?.user?.role === "candidate" ? (
+                  hasApplied ? (
+                    <div className="flex items-center justify-center bg-green-900/20 p-4 rounded-lg border border-green-500/20">
+                      <CheckCircle className="w-5 h-5 text-green-400 mr-2" />
+                      <span className="text-green-400">
+                        You have already applied for this position
+                      </span>
+                    </div>
+                  ) : (
+                    <Button
+                      className="w-full md:w-auto bg-[#229799] hover:bg-[#229799]/90"
+                      onClick={handleApply}
+                      disabled={isApplying}
+                    >
+                      {isApplying ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Applying...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4 mr-2" />
+                          Apply Now
+                        </>
+                      )}
+                    </Button>
+                  )
+                ) : !session?.user ? (
+                  <div className="text-center">
+                    <p className="text-gray-300 mb-4">
+                      Sign in as a candidate to apply for this position
+                    </p>
+                    <Button
+                      variant="outline"
+                      onClick={() => router.push("/login")}
+                      className="border-[#229799] text-[#229799] hover:bg-[#229799] hover:text-white"
+                    >
+                      Sign In to Apply
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </main>
 
+      {/* Footer */}
       <footer className="relative border-t border-[#229799]/20 bg-black/95 backdrop-blur-sm">
         {/* Decorative Elements */}
         <div className="absolute inset-0 overflow-hidden">
@@ -367,9 +379,9 @@ const PositionPage = ({ params }: PositionPageProps) => {
           {/* Top Section with Newsletter */}
           <div className="grid gap-8 py-12 lg:grid-cols-3">
             <div className="space-y-4">
-              <div className="flex items-center gap-2 font-bold text-xl">
-                <Image src="/RapidHirelogo.png" alt="AI Interviewer" width={122} height={72} />
-              </div>
+              <Link href="/">
+                <Image src="/RapidHirelogo.png" alt="RapidHire" width={122} height={72} />
+              </Link>
               <p className="text-gray-400 max-w-sm">
                 Transform your hiring process with AI-powered video interviews. Save time, reduce bias, and find the best candidates.
               </p>
@@ -399,10 +411,10 @@ const PositionPage = ({ params }: PositionPageProps) => {
               <h4 className="text-lg font-semibold text-white">Product</h4>
               <ul className="space-y-2">
                 <li>
-                  <Link href="#features" className="text-gray-400 hover:text-[#229799] transition-colors">Features</Link>
+                  <Link href="/#features" className="text-gray-400 hover:text-[#229799] transition-colors">Features</Link>
                 </li>
                 <li>
-                  <Link href="#pricing" className="text-gray-400 hover:text-[#229799] transition-colors">Pricing</Link>
+                  <Link href="/#pricing" className="text-gray-400 hover:text-[#229799] transition-colors">Pricing</Link>
                 </li>
                 <li>
                   <Link href="/demo" className="text-gray-400 hover:text-[#229799] transition-colors">Book Demo</Link>
@@ -453,10 +465,14 @@ const PositionPage = ({ params }: PositionPageProps) => {
               <h4 className="text-lg font-semibold text-white">Contact</h4>
               <ul className="space-y-2">
                 <li>
-                  <Link href="mailto:contact@rapidhire.ai" className="text-gray-400 hover:text-[#229799] transition-colors">shashigdsc@gmail.com</Link>
+                  <Link href="mailto:shashigdsc@gmail.com" className="text-gray-400 hover:text-[#229799] transition-colors">
+                    shashigdsc@gmail.com
+                  </Link>
                 </li>
                 <li>
-                  <Link href="tel:+1234567890" className="text-gray-400 hover:text-[#229799] transition-colors">+91-9219612129</Link>
+                  <Link href="tel:+919219612129" className="text-gray-400 hover:text-[#229799] transition-colors">
+                    +91-9219612129
+                  </Link>
                 </li>
                 <li className="text-gray-400">
                   MAIT Delhi, Rohini Sector-22, New Delhi

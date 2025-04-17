@@ -28,6 +28,7 @@ import { Switch } from "@/components/ui/switch"
 interface PositionModalProps {
   isOpen: boolean
   onClose: () => void
+  onSubmit: (formData: any) => Promise<void>
   position?: {
     _id: string
     title: string
@@ -57,28 +58,37 @@ interface SessionUser {
   role: string
 }
 
-export function PositionModal({ isOpen, onClose, position }: PositionModalProps) {
+export function PositionModal({
+  isOpen,
+  onClose,
+  onSubmit,
+  position
+}: PositionModalProps) {
   const router = useRouter()
   const { data: session, status } = useSession()
   const [isLoading, setIsLoading] = useState(false)
   const [formData, setFormData] = useState({
-    title: position?.title || "",
-    department: position?.department || "",
-    location: position?.location || "",
-    type: position?.type || "Full-time",
-    workLocation: position?.workLocation || "On Site",
-    description: position?.description || "",
-    requirements: position?.requirements?.join("\n") || "",
-    questions: position?.questions?.join("\n") || "",
+    title: position?.title || '',
+    department: position?.department || '',
+    location: position?.location || '',
+    type: position?.type || 'Full-time',
+    workLocation: position?.workLocation || 'Remote',
+    description: position?.description || '',
+    requirements: Array.isArray(position?.requirements) 
+      ? position.requirements.join('\n')
+      : position?.requirements || '',
+    questions: Array.isArray(position?.questions)
+      ? position.questions.join('\n')
+      : position?.questions || '',
     minExperience: position?.minExperience || 0,
-    maxExperience: position?.maxExperience || 0,
-    salaryRange: {
-      min: position?.salaryRange?.min || 0,
-      max: position?.salaryRange?.max || 0
+    maxExperience: position?.maxExperience || 5,
+    salaryRange: position?.salaryRange || {
+      min: 0,
+      max: 0
     },
     active: position?.active ?? true,
-    companyName: position?.companyName || "",
-    lastDate: position?.lastDate || ""
+    companyName: position?.companyName || '',
+    lastDate: position?.lastDate || new Date().toISOString().slice(0, 16)
   })
 
   useEffect(() => {
@@ -114,19 +124,19 @@ export function PositionModal({ isOpen, onClose, position }: PositionModalProps)
         department: "",
         location: "",
         type: "Full-time",
-        workLocation: "On Site",
+        workLocation: "Remote",
         description: "",
         requirements: "",
         questions: "",
         minExperience: 0,
-        maxExperience: 0,
+        maxExperience: 5,
         salaryRange: {
           min: 0,
           max: 0
         },
         active: true,
         companyName: "",
-        lastDate: ""
+        lastDate: new Date().toISOString().slice(0, 16)
       })
     }
   }, [position])
@@ -134,54 +144,12 @@ export function PositionModal({ isOpen, onClose, position }: PositionModalProps)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
-
+    
     try {
-      if (!session?.user) {
-        throw new Error("Not authenticated")
-      }
-
-      const user = session.user as SessionUser
-      if (user.role !== "company") {
-        throw new Error("Only company users can create positions")
-      }
-
-      const positionData = {
-        ...formData,
-        requirements: formData.requirements.split("\n").filter(Boolean),
-        questions: formData.questions.split("\n").filter(Boolean),
-        minExperience: Number(formData.minExperience),
-        maxExperience: Number(formData.maxExperience),
-        salaryRange: {
-          min: Number(formData.salaryRange.min),
-          max: Number(formData.salaryRange.max)
-        }
-      }
-
-      console.log("Session:", session) // Debug session
-      console.log("Submitting position data:", positionData) // Debug data
-
-      const response = await fetch(`${window.location.origin}/api/positions`, {
-        method: position ? "PUT" : "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${JSON.stringify(session.accessToken)}`,
-        },
-        credentials: "include",
-        body: JSON.stringify(position ? { id: position._id, ...positionData } : positionData),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        console.error("API Error Response:", errorData) // Debug error
-        throw new Error(errorData.error || "Failed to save position")
-      }
-
-      toast.success(`Position ${position ? "updated" : "created"} successfully`)
-      router.refresh()
+      await onSubmit(formData)
       onClose()
     } catch (error) {
-      console.error("Error saving position:", error)
-      toast.error(error instanceof Error ? error.message : "Something went wrong")
+      console.error('Error submitting position:', error)
     } finally {
       setIsLoading(false)
     }

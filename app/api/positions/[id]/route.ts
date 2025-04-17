@@ -5,47 +5,46 @@ import { connectToDatabase } from "@/lib/db"
 import { ObjectId } from "mongodb"
 
 export async function GET(
-  req: Request,
-  context: { params: { id: string } }
+  request: Request,
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    // Get the ID parameter
-    const { id } = context.params
-    if (!id) {
+    // Wait for params to be available
+    const { id } = await context.params
+    
+    if (!id || !ObjectId.isValid(id)) {
       return NextResponse.json(
-        { error: "Position ID is required" },
-        { status: 400 }
-      )
-    }
-
-    // Validate ObjectId format
-    if (!ObjectId.isValid(id)) {
-      return NextResponse.json(
-        { error: "Invalid position ID format" },
+        { success: false, error: 'Invalid position ID' },
         { status: 400 }
       )
     }
 
     // Connect to database
-    const db = await connectToDatabase()
+    const { db } = await connectToDatabase()
     
     // Find the position
-    const position = await db.db.collection("positions").findOne({
-      _id: new ObjectId(id)
-    })
+    const position = await db
+      .collection('positions')
+      .findOne({ _id: new ObjectId(id) })
 
     if (!position) {
       return NextResponse.json(
-        { error: "Position not found" },
+        { success: false, error: 'Position not found' },
         { status: 404 }
       )
     }
 
-    return NextResponse.json(position)
+    return NextResponse.json({
+      success: true,
+      position: {
+        ...position,
+        _id: position._id.toString()
+      }
+    })
   } catch (error) {
-    console.error("Error fetching position:", error)
+    console.error('Error fetching position:', error)
     return NextResponse.json(
-      { error: "Failed to fetch position" },
+      { success: false, error: 'Failed to fetch position' },
       { status: 500 }
     )
   }
@@ -54,78 +53,128 @@ export async function GET(
 // Optional: Add DELETE method if you want to handle position deletion
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
-
-    if (!id) {
+    // Wait for params to be available
+    const { id } = await context.params
+    
+    if (!id || !ObjectId.isValid(id)) {
       return NextResponse.json(
-        { error: "Position ID is required" },
+        { success: false, error: 'Invalid position ID' },
         { status: 400 }
       )
     }
 
     const { db } = await connectToDatabase()
-    const objectId = new ObjectId(id)
-
-    const result = await db.collection("positions").deleteOne({ _id: objectId })
+    const result = await db.collection("positions").deleteOne({ 
+      _id: new ObjectId(id) 
+    })
 
     if (result.deletedCount === 0) {
       return NextResponse.json(
-        { error: "Position not found" },
+        { success: false, error: "Position not found" },
         { status: 404 }
       )
     }
 
-    return NextResponse.json({ message: "Position deleted successfully" })
+    return NextResponse.json({ 
+      success: true,
+      message: "Position deleted successfully" 
+    })
   } catch (error) {
     console.error("Error deleting position:", error)
     return NextResponse.json(
-      { error: "Failed to delete position" },
+      { success: false, error: "Failed to delete position" },
       { status: 500 }
     )
   }
 }
 
-// Optional: Add PATCH method for updating positions
-export async function PATCH(
+export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params
-    const updates = await request.json()
-
-    if (!id) {
+    // Wait for params to be available
+    const { id } = await context.params
+    
+    if (!id || !ObjectId.isValid(id)) {
       return NextResponse.json(
-        { error: "Position ID is required" },
+        { success: false, error: 'Invalid position ID' },
         { status: 400 }
       )
     }
 
+    // Connect to database
     const { db } = await connectToDatabase()
-    const objectId = new ObjectId(id)
+    const body = await request.json()
 
-    const result = await db.collection("positions").updateOne(
-      { _id: objectId },
-      { $set: updates }
+    // Validate required fields
+    const requiredFields = [
+      'title',
+      'companyName',
+      'department',
+      'location',
+      'type',
+      'workLocation',
+      'description',
+      'requirements',
+      'questions',
+      'minExperience',
+      'maxExperience',
+      'salaryRange',
+      'applicationDeadline'
+    ]
+
+    for (const field of requiredFields) {
+      if (!(field in body)) {
+        return NextResponse.json(
+          { success: false, error: `Missing required field: ${field}` },
+          { status: 400 }
+        )
+      }
+    }
+
+    // Update the position
+    const result = await db.collection('positions').updateOne(
+      { _id: new ObjectId(id) },
+      {
+        $set: {
+          title: body.title,
+          companyName: body.companyName,
+          department: body.department,
+          location: body.location,
+          type: body.type,
+          workLocation: body.workLocation,
+          description: body.description,
+          requirements: body.requirements,
+          questions: body.questions,
+          minExperience: body.minExperience,
+          maxExperience: body.maxExperience,
+          salaryRange: body.salaryRange,
+          status: body.status,
+          applicationDeadline: new Date(body.applicationDeadline),
+          updatedAt: new Date()
+        }
+      }
     )
 
-    if (result.matchedCount === 0) {
+    if (!result.matchedCount) {
       return NextResponse.json(
-        { error: "Position not found" },
+        { success: false, error: 'Position not found' },
         { status: 404 }
       )
     }
 
-    // Fetch and return the updated position
-    const updatedPosition = await db.collection("positions").findOne({ _id: objectId })
-    return NextResponse.json(updatedPosition)
+    return NextResponse.json({
+      success: true,
+      message: 'Position updated successfully'
+    })
   } catch (error) {
-    console.error("Error updating position:", error)
+    console.error('Error updating position:', error)
     return NextResponse.json(
-      { error: "Failed to update position" },
+      { success: false, error: 'Failed to update position' },
       { status: 500 }
     )
   }

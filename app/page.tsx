@@ -49,7 +49,7 @@ export default function HomePage() {
         </div>
       </header>
 
-      <main className="flex-1 relative pt-14">
+      <main className="flex-1 relative pt-3">
         {/* Hero Section */}
         <section className="relative min-h-[calc(100vh-3.5rem)] flex items-center justify-center overflow-hidden py-20">
           {/* Aurora Background */}
@@ -72,10 +72,12 @@ export default function HomePage() {
                   <span className="text-[#ff6b00]">Combinator</span>
                 </div>
                 <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tighter leading-tight">
-                  <span className="text-[#229799]">Transform your hiring</span>
-                  <br />
-                  with Video AI-Interviewer
+                  <span className="text-[#229799]">Transform your hiring</span><br /> with AI Recruiter AGENT
                 </h1>
+                <div className="relative justify-center items-center">
+
+                </div>
+
                 <p className="text-xl md:text-2xl text-gray-400 max-w-3xl mx-auto">
                   99.9% Cheating Proof | Automated Interview | Instant results
                 </p>
@@ -95,8 +97,24 @@ export default function HomePage() {
                 </Button>
               </div>
 
-
             </div>
+          </div>
+        </section>
+
+
+
+        {/* dashboard image section */}
+
+        <section className="flex justify-center items-center mt-[-150px]">
+          <div className="relative">
+            <div className="absolute inset-0 bg-[#229799]/70 blur-3xl rounded-full" />
+            <Image
+              src="/dashpng.png"
+              alt="dashboard image"
+              width={1000}
+              height={1000}
+              className="relative z-10"
+            />
           </div>
         </section>
 
@@ -137,10 +155,10 @@ export default function HomePage() {
                     </Button>
                   </div>
                 </div>
-                <div className="w-full md:w-1/2 aspect-square relative group">
-                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-[#229799] to-transparent opacity-20" />
+                <div className="w-full md:w-1/2 aspect-square relative group flex justify-center items-center">
+                  <div className="absolute inset-0 bg-[#229799]/20 blur-3xl rounded-full" />
                   <Image
-                    src="/resume-analysis.svg"
+                    src="/resume.png"
                     alt="Resume Analysis"
                     width={600}
                     height={600}
@@ -166,14 +184,14 @@ export default function HomePage() {
                     </Button>
                   </div>
                 </div>
-                <div className="w-full md:w-1/2 aspect-square relative group">
-                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-[#229799] to-transparent opacity-20" />
+                <div className="w-full md:w-1/2 aspect-square relative group flex justify-center items-center">
+                <div className="absolute inset-0 bg-[#229799]/20 blur-3xl rounded-full" />
                   <Image
-                    src="/video-interview.svg"
+                    src="/interview.webp"
                     alt="Video Interview"
                     width={600}
                     height={600}
-                    className="rounded-2xl object-cover"
+                    className="rounded-md object-cover"
                   />
                 </div>
               </div>
@@ -195,14 +213,14 @@ export default function HomePage() {
                     </Button>
                   </div>
                 </div>
-                <div className="w-full md:w-1/2 aspect-square relative group">
-                  <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-[#229799] to-transparent opacity-20" />
+                <div className="w-full md:w-1/2 aspect-square relative group flex justify-center items-center">
+                <div className="absolute inset-0 bg-[#229799]/20 blur-3xl rounded-full" />
                   <Image
-                    src="/scoring-system.svg"
+                    src="/scoring.png"
                     alt="Scoring System"
                     width={600}
                     height={600}
-                    className="rounded-2xl object-cover"
+                    className="rounded-md object-cover"
                   />
                 </div>
               </div>
@@ -235,7 +253,7 @@ export default function HomePage() {
                   How It Works
                 </h2>
                 <p className="text-xl md:text-2xl text-gray-400 max-w-3xl mx-auto leading-relaxed">
-                  Our streamlined process makes screening candidates efficient and effective
+                 Our streamlined process automates candidate interviews using AI, ensuring faster, fairer, and smarter hiring.
                 </p>
               </div>
             </div>
@@ -246,43 +264,43 @@ export default function HomePage() {
                 {[
                   {
                     number: 1,
-                    title: "Company Setup",
-                    description: "Companies add interview questions and upload candidate resumes through our intuitive dashboard",
+                    title: "Create Position",
+                    description: "Add job title, location, salary, description, and requirements to start the hiring process.",
                     icon: <FileText className="w-full h-full" />,
                     delay: "0"
                   },
                   {
                     number: 2,
-                    title: "AI Analysis",
-                    description: "Our advanced AI analyzes resumes and prepares personalized interview questions",
+                    title: "AI-Powered Question Generation",
+                    description: "Our AI analyzes each resume and generates personalized interview questions, aligned with the role requirements and skills expected.",
                     icon: <Brain className="w-full h-full" />,
                     delay: "100"
                   },
                   {
                     number: 3,
-                    title: "Interview Link",
-                    description: "Companies generate and share secure interview links with candidates",
+                    title: "Interview Link Creation",
+                    description: "Generate secure, one-click interview links and share them with candidates. No scheduling required — interviews happen on their time.",
                     icon: <LinkIcon className="w-full h-full" />,
                     delay: "200"
                   },
                   {
                     number: 4,
-                    title: "Candidate Interview",
-                    description: "Candidates complete a 15-minute AI-led video interview at their convenience",
+                    title: "Candidate Video Interview",
+                    description: "Candidates complete an automated, AI-monitored video interview anytime, anywhere. Cheating detection ensures authenticity.",
                     icon: <Video className="w-full h-full" />,
                     delay: "300"
                   },
                   {
                     number: 5,
-                    title: "AI Scoring",
-                    description: "System scores candidates on multiple factors and generates detailed reports",
+                    title: "AI Scoring & Report Generation",
+                    description: "Our system scores candidates on communication, skill match, behavior, and confidence — with detailed reports delivered to your dashboard instantly.",
                     icon: <CheckCircle className="w-full h-full" />,
                     delay: "400"
                   },
                   {
                     number: 6,
-                    title: "Company Review",
-                    description: "Companies review recordings, scores, and shortlist top candidates",
+                    title: "Final Review & Shortlisting",
+                    description: "Access interview recordings, AI insights, and ranking charts. Shortlist top candidates or export the data to your ATS — all in a few clicks.",
                     icon: <ClipboardList className="w-full h-full" />,
                     delay: "500"
                   }
@@ -327,10 +345,10 @@ export default function HomePage() {
         {/* Jobs Portal Section */}
         <section id="jobs-portal" className="py-24 relative overflow-hidden">
           <div className="absolute inset-0 bg-black/90" />
-          
+
           {/* Subtle grid background */}
           <div className="absolute inset-0 bg-[linear-gradient(to_right,#229799/10_1px,transparent_1px),linear-gradient(to_bottom,#229799/10_1px,transparent_1px)] bg-[size:24px_24px]" />
-          
+
           <div className="container relative z-10 mx-auto">
             <div className="flex flex-col items-center justify-center space-y-8 text-center mb-16 animate-fade-up">
               <div className="space-y-4">
@@ -358,7 +376,7 @@ export default function HomePage() {
             </div>
           </div>
         </section>
-        
+
 
         {/* Pricing Section */}
         <section id="pricing" className="py-24 relative overflow-hidden">
