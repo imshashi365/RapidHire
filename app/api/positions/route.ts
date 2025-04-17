@@ -8,6 +8,7 @@ import {
   deletePosition,
 } from "@/lib/utils/positionUtils"
 import { authOptions } from "../auth/[...nextauth]/route"
+import clientPromise from '@/lib/mongodb'
 
 export async function POST(req: Request) {
   try {
@@ -40,34 +41,30 @@ export async function POST(req: Request) {
   }
 }
 
-export async function GET(req: Request) {
+export async function GET() {
   try {
-    const session = await getServerSession(authOptions)
-    
-    console.log("API Route - Session:", session)
-    
-    if (!session) {
-      console.log("API Route - No session found")
-      return NextResponse.json(
-        { error: "Unauthorized - No session" },
-        { status: 401 }
-      )
+    const client = await clientPromise
+    const db = client.db()
+    const positions = await db.collection('positions')
+      .find({})
+      .sort({ createdAt: -1 })
+      .toArray()
+
+    // Detailed logging of the first position to see its structure
+    if (positions.length > 0) {
+      console.log('Sample position structure:', JSON.stringify(positions[0], null, 2))
+      console.log('Salary type:', typeof positions[0].salary)
+      console.log('Salary value:', positions[0].salary)
     }
 
-    if (session.user.role !== "company") {
-      console.log("API Route - Invalid role:", session.user.role)
-      return NextResponse.json(
-        { error: "Unauthorized - Invalid role" },
-        { status: 401 }
-      )
-    }
-
-    const positions = await getPositionsByCompany(session.user.id)
-    return NextResponse.json(positions)
+    return NextResponse.json({ 
+      positions,
+      success: true 
+    })
   } catch (error) {
-    console.error("Get positions error:", error)
+    console.error('Error fetching positions:', error)
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: 'Failed to fetch positions', success: false },
       { status: 500 }
     )
   }

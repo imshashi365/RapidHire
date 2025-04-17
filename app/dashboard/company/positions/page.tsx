@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Search, Filter, Plus, Users, Calendar, MoreHorizontal, Edit, Trash2, Copy, MapPin, Briefcase, Eye, IndianRupee, Clock } from "lucide-react"
+import { Search, Filter, Plus, Users, Calendar, MoreHorizontal, Edit, Trash2, Copy, MapPin, Briefcase, Eye, IndianRupee, Clock, MoreVertical, PenSquare, DollarSign, Building2 } from "lucide-react"
 import { CompanyDashboardHeader } from "@/components/company-dashboard-header"
 import { CompanyDashboardSidebar } from "@/components/company-dashboard-sidebar"
 import {
@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { PositionModal } from "./components/PositionModal"
 import { toast } from "sonner"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface Position {
   _id: string
@@ -53,6 +54,11 @@ interface Position {
   lastDate: string
   updatedAt: string
   createdAt: string
+  salary: string | {
+    min: number
+    max: number
+    currency: string
+  }
 }
 
 interface ApplicationCount {
@@ -68,6 +74,7 @@ export default function PositionsPage() {
   const [positions, setPositions] = useState<Position[]>([])
   const [applicationCounts, setApplicationCounts] = useState<ApplicationCount[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -90,7 +97,6 @@ export default function PositionsPage() {
           credentials: "include",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${session.accessToken}`
           },
         })
         
@@ -99,7 +105,10 @@ export default function PositionsPage() {
         }
         
         const positionsData = await positionsResponse.json()
-        setPositions(positionsData)
+        // Ensure positions is an array and has the expected structure
+        const positionsArray = Array.isArray(positionsData.positions) ? positionsData.positions : []
+        console.log('Fetched positions:', positionsArray) // Debug log
+        setPositions(positionsArray)
 
         // Fetch application counts
         const countsResponse = await fetch("/api/positions/counts", {
@@ -107,7 +116,6 @@ export default function PositionsPage() {
           credentials: "include",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${session.accessToken}`
           },
         })
 
@@ -119,6 +127,7 @@ export default function PositionsPage() {
         setApplicationCounts(countsData)
       } catch (error) {
         console.error("Error fetching data:", error)
+        setError(error instanceof Error ? error.message : "Failed to load data")
         toast.error(error instanceof Error ? error.message : "Failed to load data")
       } finally {
         setIsLoading(false)
@@ -155,7 +164,6 @@ export default function PositionsPage() {
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${session?.accessToken}`
         }
       })
 
@@ -172,12 +180,86 @@ export default function PositionsPage() {
     }
   }
 
-  const formatSalary = (min: number, max: number) => {
-    return `₹${min}L - ₹${max}L`
+  const formatSalary = (salary: Position['salary']) => {
+    if (!salary) return 'Salary not specified'
+
+    if (typeof salary === 'string') return salary
+
+    if (typeof salary === 'number') {
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        maximumFractionDigits: 0
+      }).format(salary)
+    }
+
+    if (typeof salary === 'object') {
+      try {
+        const formatter = new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: salary.currency || 'USD',
+          maximumFractionDigits: 0
+        })
+        return `${formatter.format(salary.min)} - ${formatter.format(salary.max)}`
+      } catch (error) {
+        console.error('Error formatting salary:', error)
+        if ('min' in salary && 'max' in salary) {
+          return `${salary.min} - ${salary.max} ${salary.currency || 'USD'}`
+        }
+      }
+    }
+
+    return 'Salary not specified'
   }
 
-  if (isLoading) {
-    return <div>Loading...</div>
+  const getWorkLocationColor = (workLocation: string) => {
+    switch (workLocation.toLowerCase()) {
+      case 'remote':
+        return 'bg-green-500/10 text-green-500'
+      case 'hybrid':
+        return 'bg-blue-500/10 text-blue-500'
+      case 'onsite':
+        return 'bg-orange-500/10 text-orange-500'
+      default:
+        return 'bg-gray-500/10 text-gray-500'
+    }
+  }
+
+  if (status === "loading" || isLoading) {
+    return (
+      <div className="container py-8">
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold">Loading...</h1>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((i) => (
+            <Card key={i}>
+              <CardHeader>
+                <Skeleton className="h-6 w-3/4 mb-2" />
+                <Skeleton className="h-4 w-1/2" />
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <Skeleton className="h-4 w-full" />
+                  <Skeleton className="h-4 w-2/3" />
+                  <Skeleton className="h-4 w-1/2" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  if (status === "unauthenticated") {
+    router.push('/login')
+    return null
+  }
+
+  if (session?.user.role !== 'company') {
+    router.push('/dashboard/candidate')
+    return null
   }
 
   return (
@@ -196,83 +278,101 @@ export default function PositionsPage() {
             </Button>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {positions.map((position) => (
-              <Card key={position._id} className="relative">
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <CardTitle className="text-lg">{position.title}</CardTitle>
-                      <CardDescription className="mt-1">
-                        {position.department} • {position.location}
-                      </CardDescription>
+          {error ? (
+            <div className="text-center py-8">
+              <p className="text-red-500 mb-4">{error}</p>
+              <Button onClick={() => window.location.reload()}>Try Again</Button>
+            </div>
+          ) : positions.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12">
+                <Building2 className="h-12 w-12 text-gray-400 mb-4" />
+                <p className="text-xl font-medium text-gray-900 dark:text-gray-100 mb-2">No positions yet</p>
+                <p className="text-gray-500 dark:text-gray-400 mb-4">Create your first job position to start hiring.</p>
+                <Button onClick={() => router.push('/dashboard/company/positions/new')}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Position
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {positions.map((position) => (
+                <Card key={position._id} className="relative">
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle className="text-xl mb-2">{position.title}</CardTitle>
+                        <CardDescription className="flex items-center">
+                          <Building2 className="h-4 w-4 mr-1" />
+                          {position.companyName}
+                        </CardDescription>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => router.push(`/dashboard/company/positions/${position._id}/edit`)}>
+                            <PenSquare className="h-4 w-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            className="text-red-600 focus:text-red-600"
+                            onClick={() => handleDeletePosition(position._id)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" className="h-8 w-8 p-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => handleEditPosition(position)}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleDeletePosition(position._id)}
-                          className="text-red-600"
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex items-center text-gray-500">
+                        <DollarSign className="h-4 w-4 mr-1" />
+                        {formatSalary(position.salary)}
+                      </div>
+                      <div className="flex items-center text-gray-500">
+                        <MapPin className="h-4 w-4 mr-1" />
+                        {position.location}
+                      </div>
+                      <div className="flex items-center gap-2">
                         <Briefcase className="h-4 w-4" />
-                        <span>{position.type}</span>
-                      </div>
-                      <Badge variant={position.active ? "default" : "secondary"}>
-                        {position.active ? "Active" : "Inactive"}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <MapPin className="h-4 w-4" />
-                      <span>{position.workLocation}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <IndianRupee className="h-4 w-4" />
-                      <div className="text-sm text-gray-500">
-                        {formatSalary(position.salaryRange.min, position.salaryRange.max)}
+                        <Badge variant="secondary" className={getWorkLocationColor(position.workLocation)}>
+                          {position.workLocation.charAt(0).toUpperCase() + position.workLocation.slice(1)}
+                        </Badge>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Users className="h-4 w-4" />
-                      <span>{getApplicationCount(position._id)} applications</span>
+                    {/* add here to count how many candidate applied for this position */}
+                    <div className="flex items-center gap-2 mt-4">
+                      <Users className="h-4 w-4 text-gray-500" />
+                      <span className="text-sm text-gray-500">
+                        {getApplicationCount(position._id)} {getApplicationCount(position._id) === 1 ? 'application' : 'applications'}
+                      </span>
                     </div>
-                  </div>
-                </CardContent>
-                <CardFooter className="flex justify-between">
-                  <div className="text-sm text-muted-foreground">
-                    Updated {new Date(position.updatedAt).toLocaleDateString()}
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => router.push(`/positions/${position._id}`)}
-                  >
-                    <Eye className="mr-2 h-4 w-4" />
-                    View
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))}
-          </div>
+                  </CardContent>
+                  <CardFooter className="text-sm text-gray-500 flex items-center justify-between">
+                    <span>Posted {new Date(position.createdAt).toLocaleDateString()}</span>
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => router.push(`/positions/${position._id}`)}
+                      className="ml-2"
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      View
+                    </Button>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          )}
 
           <PositionModal
             isOpen={isModalOpen}

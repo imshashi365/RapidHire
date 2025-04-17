@@ -6,8 +6,8 @@ import { Providers } from './providers'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'RapidHire AI Interviewer',
-  description: 'AI-powered interview screening platform',
+  title: 'RapidHire - AI-Powered Video Interviews',
+  description: 'Transform your hiring process with AI-powered video interviews',
 }
 
 export default function RootLayout({

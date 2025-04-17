@@ -4,9 +4,9 @@ import { useState, useEffect, useRef } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter, useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { toast } from "sonner"
-import { Mic, PhoneCall, AlertCircle } from "lucide-react"
+import { Mic, PhoneCall, AlertCircle, Clock, Video, VideoOff, MicOff } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   AlertDialog,
@@ -108,6 +108,10 @@ export default function InterviewSession() {
   const [isLoading, setIsLoading] = useState(false)
   const [loadingState, setLoadingState] = useState<'initializing' | 'starting' | 'ready' | null>(null)
   const vapiRef = useRef<any>(null)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const [isVideoOn, setIsVideoOn] = useState(true)
+  const [isMicOn, setIsMicOn] = useState(true)
   const [interviewData, setInterviewData] = useState<any>(null)
   const [interview, setInterview] = useState<InterviewState>({
     isStarted: false,
@@ -349,6 +353,46 @@ export default function InterviewSession() {
     }
   }, [interview.isStarted, interviewData, session, params.id])
 
+  // Initialize camera when interview starts
+  useEffect(() => {
+    if (interview.isStarted && isVideoOn) {
+      navigator.mediaDevices
+        .getUserMedia({ video: true, audio: isMicOn })
+        .then((stream) => {
+          if (videoRef.current) {
+            videoRef.current.srcObject = stream
+          }
+          // Initialize MediaRecorder
+          mediaRecorderRef.current = new MediaRecorder(stream)
+          mediaRecorderRef.current.ondataavailable = (event) => {
+            if (event.data.size > 0) {
+              // Handle recording data
+              const formData = new FormData()
+              formData.append('recording', new Blob([event.data], { type: 'video/webm' }))
+              formData.append('interviewId', params.id as string)
+              
+              fetch('/api/interview/upload-recording', {
+                method: 'POST',
+                body: formData
+              })
+              .then(response => response.json())
+              .then(data => {
+                console.log('Recording uploaded:', data)
+              })
+              .catch(error => {
+                console.error('Error uploading recording:', error)
+              })
+            }
+          }
+        })
+        .catch((err) => {
+          console.error("Error accessing camera:", err)
+          setIsVideoOn(false)
+          toast.error("Failed to access camera. Please check your permissions.")
+        })
+    }
+  }, [interview.isStarted, isVideoOn, isMicOn, params.id])
+
   const startInterview = () => {
     if (!interviewData?.position?.title) {
       toast.error("Interview data is not ready yet")
@@ -392,8 +436,8 @@ export default function InterviewSession() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b">
+    <div className="flex min-h-screen flex-col bg-black text-white">
+      <header className="bg-zinc-900 border-b">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-semibold">AI Interview Session</h1>
@@ -401,33 +445,22 @@ export default function InterviewSession() {
               <div className="flex items-center">
                 <span className="text-xl font-mono">{formatTime(timer)}</span>
               </div>
-              <nav className="flex items-center space-x-4">
-                <Link href="/dashboard/candidate/interviews" className="flex items-center space-x-2 text-gray-600 hover:text-gray-900">
-                  <span>My Interviews</span>
-                </Link>
-                <Link href="/dashboard/candidate/profile" className="flex items-center space-x-2 text-gray-600 hover:text-gray-900">
-                  <span>My Profile</span>
-                </Link>
-                <Link href="/dashboard/candidate/resume" className="flex items-center space-x-2 text-gray-600 hover:text-gray-900">
-                  <span>Resume</span>
-                </Link>
-              </nav>
             </div>
           </div>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="flex-1 container py-6">
         {!interviewData ? (
           <div className="flex items-center justify-center min-h-[400px]">
-            <Card className="p-6">
-              <p className="text-gray-500">Loading interview details...</p>
+            <Card className="p-6 bg-gray-900 border-gray-800">
+              <p className="text-gray-400">Loading interview details...</p>
             </Card>
           </div>
         ) : (
           <>
             <div className="grid grid-cols-2 gap-8">
-              <Card className="p-6 flex flex-col items-center justify-center min-h-[400px]">
+              <Card className="p-6 flex flex-col items-center justify-center min-h-[400px] bg-gray-900 border-gray-800">
                 <Avatar className="w-24 h-24 mb-4">
                   <AvatarImage src="https://api.dicebear.com/7.x/bottts/svg?seed=ai-recruiter" alt="AI Recruiter" />
                   <AvatarFallback>
@@ -436,18 +469,29 @@ export default function InterviewSession() {
                     </div>
                   </AvatarFallback>
                 </Avatar>
-                <h2 className="text-lg font-medium mb-2">AI Recruiter</h2>
-                <p className="text-gray-500 text-center">
+                <h2 className="text-lg font-medium mb-2 text-white">AI Recruiter</h2>
+                <p className="text-gray-400 text-center">
                   {interview.currentQuestion || "Ready to start your interview"}
                 </p>
               </Card>
 
-              <Card className="p-6 flex flex-col items-center justify-center min-h-[400px]">
-                <Avatar className="w-24 h-24 mb-4">
-                  <AvatarFallback>{session.user.name?.[0] || "U"}</AvatarFallback>
-                </Avatar>
-                <h2 className="text-lg font-medium mb-2">{session.user.name || "Candidate"}</h2>
-                <p className="text-gray-500 text-center">
+              <Card className="p-6 flex flex-col items-center justify-center min-h-[600px] bg-gray-900 border-gray-800">
+                <div className="w-full h-500 mb-4 rounded-lg overflow-hidden bg-black">
+                  {isVideoOn ? (
+                    <video
+                      ref={videoRef}
+                      autoPlay
+                      muted={!isMicOn}
+                      className="w-[600px] h-[400px] object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <VideoOff className="h-12 w-12 text-gray-400" />
+                    </div>
+                  )}
+                </div>
+                <h2 className="text-lg font-medium mb-2 text-white">{session.user.name || "Candidate"}</h2>
+                <p className="text-gray-400 text-center">
                   {isRecording ? "Recording..." : "Click the microphone to start"}
                 </p>
               </Card>
@@ -459,7 +503,7 @@ export default function InterviewSession() {
                   <Button
                     size="lg"
                     variant="default"
-                    className="px-8"
+                    className="px-8 bg-[#229799] hover:bg-[#229799]/90"
                     onClick={startInterview}
                     disabled={isLoading || loadingState === 'starting' || !interviewData?.position?.title}
                   >
@@ -487,6 +531,22 @@ export default function InterviewSession() {
                     <Mic className="h-6 w-6" />
                   </Button>
                   <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setIsVideoOn(!isVideoOn)}
+                    className="rounded-full w-12 h-12"
+                  >
+                    {isVideoOn ? <Video className="h-6 w-6" /> : <VideoOff className="h-6 w-6" />}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setIsMicOn(!isMicOn)}
+                    className="rounded-full w-12 h-12"
+                  >
+                    {isMicOn ? <Mic className="h-6 w-6" /> : <MicOff className="h-6 w-6" />}
+                  </Button>
+                  <Button
                     size="lg"
                     variant="destructive"
                     className="rounded-full w-12 h-12"
@@ -499,7 +559,7 @@ export default function InterviewSession() {
               )}
             </div>
 
-            <div className="text-center mt-4 text-gray-500">
+            <div className="text-center mt-4 text-gray-400">
               {loadingState === 'initializing' && "Loading interview details..."}
               {loadingState === 'starting' && "Starting interview..."}
               {loadingState === 'ready' && !interview.isStarted && 
@@ -512,8 +572,8 @@ export default function InterviewSession() {
         )}
 
         <div className="fixed bottom-8 right-8">
-          <Card className="p-4">
-            <p className="text-sm text-gray-600">
+          <Card className="p-4 bg-gray-900 border-gray-800">
+            <p className="text-sm text-gray-400">
               {loadingState === 'initializing' && "Loading..."}
               {loadingState === 'starting' && "Starting..."}
               {loadingState === 'ready' && !interview.isStarted && "Ready to Begin"}
@@ -523,17 +583,17 @@ export default function InterviewSession() {
         </div>
 
         <AlertDialog open={showExitDialog} onOpenChange={setShowExitDialog}>
-          <AlertDialogContent>
+          <AlertDialogContent className="bg-gray-900 border-gray-800">
             <AlertDialogHeader>
-              <AlertDialogTitle>Exit Interview?</AlertDialogTitle>
-              <AlertDialogDescription>
+              <AlertDialogTitle className="text-white">Exit Interview?</AlertDialogTitle>
+              <AlertDialogDescription className="text-gray-400">
                 {interview.isStarted 
                   ? "Are you sure you want to end this interview? This action cannot be undone, and your progress will be saved."
                   : "Are you sure you want to exit? You can return to this interview later."}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogCancel className="bg-gray-800 border-gray-700 text-white hover:bg-gray-700">Cancel</AlertDialogCancel>
               <AlertDialogAction onClick={confirmExit} className="bg-red-500 hover:bg-red-600">
                 {interview.isStarted ? "End Interview" : "Exit"}
               </AlertDialogAction>

@@ -42,7 +42,7 @@ export function CandidateDashboardSidebar() {
   ]
 
   return (
-    <aside className="hidden md:flex w-64 flex-col border-r bg-slate-50">
+    <aside className="hidden md:flex w-64 flex-col border-r bg-slate-50 bg-zinc-900">
       <div className="flex flex-col gap-2 p-4">
         {navItems.map((item) => (
           <Link
@@ -50,7 +50,7 @@ export function CandidateDashboardSidebar() {
             href={item.href}
             className={cn(
               "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium",
-              pathname === item.href ? "bg-primary text-primary-foreground" : "hover:bg-slate-100",
+              pathname === item.href ? "bg-primary text-primary-foreground" : "hover:bg-[#044d4f]",
             )}
           >
             <item.icon className="h-5 w-5" />

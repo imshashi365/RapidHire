@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { ArrowRight, CheckCircle, Clock, FileText, Users, Brain, Video, Link as LinkIcon, ClipboardList } from "lucide-react"
 import { useSession } from "next-auth/react"
 import Aurora from './components/Aurora'
+import { JobCarousel } from './components/JobCarousel'
 
 export default function HomePage() {
   return (
@@ -21,11 +22,15 @@ export default function HomePage() {
             </span>
           </div>
           <nav className="hidden md:flex items-center gap-6">
+
             <Link href="#features" className="text-sm font-medium text-gray-300 hover:text-[#229799] transition-colors">
               Features
             </Link>
             <Link href="#how-it-works" className="text-sm font-medium text-gray-300 hover:text-[#229799] transition-colors">
               How It Works
+            </Link>
+            <Link href="#features" className="text-sm font-medium text-gray-300 hover:text-[#229799] transition-colors">
+              Jobs Portal
             </Link>
             <Link href="#pricing" className="text-sm font-medium text-gray-300 hover:text-[#229799] transition-colors">
               Pricing
@@ -81,16 +86,16 @@ export default function HomePage() {
                   Get Started
                   <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
-                <Button 
-                  size="lg" 
-                  variant="outline" 
+                <Button
+                  size="lg"
+                  variant="outline"
                   className="w-full sm:w-auto border-[#229799] text-[#229799] hover:bg-[#229799] hover:text-white min-w-[200px]"
                 >
                   Book a demo
                 </Button>
               </div>
 
-              
+
             </div>
           </div>
         </section>
@@ -98,10 +103,10 @@ export default function HomePage() {
         {/* Features Section */}
         <section id="features" className="py-24 relative overflow-hidden">
           <div className="absolute inset-0 bg-black/90" />
-          
+
           {/* Subtle grid background */}
           <div className="absolute inset-0 bg-[linear-gradient(to_right,#229799/10_1px,transparent_1px),linear-gradient(to_bottom,#229799/10_1px,transparent_1px)] bg-[size:24px_24px]" />
-          
+
           <div className="container relative z-10 mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col items-center justify-center space-y-8 text-center mb-20 animate-fade-up">
               <div className="space-y-4">
@@ -204,7 +209,7 @@ export default function HomePage() {
 
               {/* Bottom CTA */}
               <div className="pt-8 text-center animate-fade-up">
-                <Button 
+                <Button
                   size="lg"
                   className="bg-[#229799] text-white hover:bg-[#229799]/90 text-lg px-8 py-6 rounded-xl shadow-lg shadow-[#229799]/20 hover:shadow-[#229799]/40 transition-all duration-300 hover:scale-105"
                 >
@@ -219,10 +224,10 @@ export default function HomePage() {
         {/* How It Works Section */}
         <section id="how-it-works" className="py-24 relative overflow-hidden">
           <div className="absolute inset-0 bg-black/90" />
-          
+
           {/* Animated gradient background */}
           <div className="absolute inset-0 bg-gradient-to-r from-[#229799]/10 via-transparent to-[#229799]/10 bg-[length:200%_200%] animate-gradient" />
-          
+
           <div className="container relative z-10 mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col items-center justify-center space-y-8 text-center mb-16 animate-fade-up">
               <div className="space-y-4">
@@ -306,7 +311,7 @@ export default function HomePage() {
 
               {/* Bottom CTA */}
               <div className="mt-16 text-center animate-fade-up" style={{ animationDelay: "600ms" }}>
-                <Button 
+                <Button
                   size="lg"
                   className="bg-[#229799] text-white hover:bg-[#229799]/90 text-lg px-8 py-6 rounded-xl shadow-lg shadow-[#229799]/20 hover:shadow-[#229799]/40 transition-all duration-300 hover:scale-105"
                 >
@@ -318,13 +323,50 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* Pricing Section */}
-        <section id="pricing" className="py-24 relative overflow-hidden">
+
+        {/* Jobs Portal Section */}
+        <section id="jobs-portal" className="py-24 relative overflow-hidden">
           <div className="absolute inset-0 bg-black/90" />
           
           {/* Subtle grid background */}
           <div className="absolute inset-0 bg-[linear-gradient(to_right,#229799/10_1px,transparent_1px),linear-gradient(to_bottom,#229799/10_1px,transparent_1px)] bg-[size:24px_24px]" />
           
+          <div className="container relative z-10 mx-auto">
+            <div className="flex flex-col items-center justify-center space-y-8 text-center mb-16 animate-fade-up">
+              <div className="space-y-4">
+                <h2 className="text-5xl md:text-6xl lg:text-7xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-[#229799] to-white">
+                  Explore Opportunities
+                </h2>
+                <p className="text-xl md:text-2xl text-gray-400 max-w-3xl mx-auto leading-relaxed">
+                  Find your next career move with top companies worldwide
+                  </p>
+                </div>
+            </div>
+
+            {/* Job Carousel */}
+            <JobCarousel />
+
+            {/* Bottom CTA */}
+            <div className="mt-16 text-center">
+              <Button
+                size="lg"
+                className="bg-[#229799] text-white hover:bg-[#229799]/90 text-lg px-8 py-6 rounded-xl shadow-lg shadow-[#229799]/20 hover:shadow-[#229799]/40 transition-all duration-300 hover:scale-105"
+              >
+                View All Positions
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+            </div>
+          </div>
+        </section>
+        
+
+        {/* Pricing Section */}
+        <section id="pricing" className="py-24 relative overflow-hidden">
+          <div className="absolute inset-0 bg-black/90" />
+
+          {/* Subtle grid background */}
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,#229799/10_1px,transparent_1px),linear-gradient(to_bottom,#229799/10_1px,transparent_1px)] bg-[size:24px_24px]" />
+
           <div className="container relative z-10 mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col items-center justify-center space-y-8 text-center mb-16 animate-fade-up">
               <div className="space-y-4">
@@ -333,8 +375,8 @@ export default function HomePage() {
                 </h2>
                 <p className="text-xl md:text-2xl text-gray-400 max-w-3xl mx-auto leading-relaxed">
                   Choose the perfect plan for your hiring needs
-                  </p>
-                </div>
+                </p>
+              </div>
             </div>
 
             <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4 max-w-7xl mx-auto">
@@ -534,13 +576,13 @@ export default function HomePage() {
           <div className="absolute inset-0 bg-[#229799]">
             {/* Animated gradient overlay */}
             <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-black/40" />
-            
+
             {/* Animated shapes */}
             <div className="absolute inset-0">
               <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-white/10 rounded-full blur-3xl animate-pulse" />
               <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-white/10 rounded-full blur-3xl animate-pulse delay-1000" />
             </div>
-            
+
             {/* Grid pattern */}
             <div className="absolute inset-0 bg-[linear-gradient(to_right,#000/10_1px,transparent_1px),linear-gradient(to_bottom,#000/10_1px,transparent_1px)] bg-[size:24px_24px]" />
           </div>
@@ -548,7 +590,7 @@ export default function HomePage() {
           <div className="container relative">
             {/* Content */}
             <div className="max-w-6xl mx-auto">
-              
+
               {/* Main CTA Content */}
               <div className="text-center space-y-8">
                 <h2 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white leading-tight">
@@ -561,7 +603,7 @@ export default function HomePage() {
                     </svg>
                   </span>
                 </h2>
-                
+
                 <p className="text-xl md:text-2xl text-white/90 max-w-3xl mx-auto leading-relaxed">
                   Join hundreds of companies saving time and finding better candidates with AI Interviewer
                 </p>
@@ -571,16 +613,16 @@ export default function HomePage() {
                   <div className="flex flex-col sm:flex-row gap-4 justify-center items-center max-w-xl mx-auto">
                     <Link href="/signup" className="w-full sm:w-auto">
                       <Button size="lg" className="w-full sm:w-auto bg-white text-[#229799] hover:bg-white/90 text-lg px-8 py-6 rounded-xl shadow-lg shadow-black/20 hover:shadow-black/40 transition-all duration-300 hover:scale-105">
-                        Get Started Today
+                    Get Started Today
                         <ArrowRight className="ml-2 h-5 w-5" />
-                      </Button>
-                    </Link>
+                  </Button>
+                </Link>
                     <Link href="/demo" className="w-full sm:w-auto">
-                    <Button size="lg" className="w-full sm:w-auto bg-white text-[#229799] hover:bg-white/90 text-lg px-8 py-6 rounded-xl shadow-lg shadow-black/20 hover:shadow-black/40 transition-all duration-300 hover:scale-105">
-                       Book Demo Now!
+                      <Button size="lg" className="w-full sm:w-auto bg-white text-[#229799] hover:bg-white/90 text-lg px-8 py-6 rounded-xl shadow-lg shadow-black/20 hover:shadow-black/40 transition-all duration-300 hover:scale-105">
+                        Book Demo Now!
                         <ArrowRight className="ml-2 h-5 w-5" />
-                      </Button>
-                    </Link>
+                  </Button>
+                </Link>
                   </div>
 
                   {/* Social Proof */}

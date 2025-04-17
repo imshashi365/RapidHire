@@ -1,19 +1,34 @@
 import NextAuth from "next-auth"
 
 declare module "next-auth" {
-  interface User {
-    id: string
-    name?: string | null
-    email?: string | null
-    role: string
+  interface Session {
+    user: {
+      id: string
+      name: string
+      email: string
+      image?: string
+      role: "candidate" | "company"
+      candidateProfile?: {
+        resume?: string
+        skills?: string[]
+        experience?: string
+        education?: string
+      }
+    }
   }
 
-  interface Session {
-    user: User & {
-      id: string
-      role: string
+  interface User {
+    id: string
+    name: string
+    email: string
+    image?: string
+    role: "candidate" | "company"
+    candidateProfile?: {
+      resume?: string
+      skills?: string[]
+      experience?: string
+      education?: string
     }
-    accessToken: any
   }
 }
 

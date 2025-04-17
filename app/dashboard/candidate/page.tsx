@@ -59,7 +59,8 @@ export default function CandidateDashboard() {
                   <h3 className="font-medium">You have a pending interview invitation</h3>
                   <p className="text-sm text-gray-500">Complete your interview for Innovate Labs within 3 days</p>
                 </div>
-                <Button><a href="http://localhost:3000/dashboard/candidate/interview/start">Start Interview</a> </Button>
+                <Button><a href="#">Start Interview</a> </Button>
+                {/* <Button><a href="http://localhost:3000/dashboard/candidate/interview/start">Start Interview</a> </Button> */}
               </div>
             </div>
           )}

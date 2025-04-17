@@ -437,7 +437,7 @@ export default function InterviewsPage() {
                 <div className="relative w-full overflow-auto">
                   <table className="w-full caption-bottom text-sm">
                     <thead>
-                      <tr className="border-b bg-slate-50">
+                      <tr className="border-b bg-zinc-900">
                         <th className="h-12 px-4 text-left font-medium">Position</th>
                         <th className="h-12 px-4 text-left font-medium">Company</th>
                         <th className="h-12 px-4 text-left font-medium">Status</th>

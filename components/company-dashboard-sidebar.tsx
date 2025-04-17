@@ -47,15 +47,15 @@ export function CompanyDashboardSidebar() {
   ]
 
   return (
-    <aside className="hidden md:flex w-64 flex-col border-r bg-slate-50">
-      <div className="flex flex-col gap-2 p-4">
+    <aside className="hidden md:flex w-64 flex-col border-r bg-slate-50 bg-zinc-900">
+      <div className="flex flex-col gap-2 p-4 bg-zinc-900">
         {navItems.map((item) => (
           <Link
             key={item.href}
             href={item.href}
             className={cn(
               "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium",
-              pathname === item.href ? "bg-primary text-primary-foreground" : "hover:bg-slate-100",
+              pathname === item.href ? "bg-primary text-primary-foreground" : "hover:bg-[#044d4f]",
             )}
           >
             <item.icon className="h-5 w-5" />

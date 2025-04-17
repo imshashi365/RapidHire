@@ -32,6 +32,8 @@ import {
 } from "lucide-react"
 import { CompanyDashboardHeader } from "@/components/company-dashboard-header"
 import { CompanyDashboardSidebar } from "@/components/company-dashboard-sidebar"
+import { MobileMenu } from "@/components/ui/mobile-menu"
+import { useSession } from "next-auth/react"
 
 // Mock data
 const mockCandidates = [
@@ -116,26 +118,32 @@ const mockPositions = [
 export default function CompanyDashboard() {
   const [isCreatePositionOpen, setIsCreatePositionOpen] = useState(false)
   const [isUploadResumeOpen, setIsUploadResumeOpen] = useState(false)
+  const { data: session, status } = useSession()
 
   return (
     <div className="flex min-h-screen flex-col">
       <CompanyDashboardHeader />
 
       <div className="flex flex-1">
-        <CompanyDashboardSidebar />
+        <div className="md:hidden absolute top-4 left-4 z-50">
+          <MobileMenu isAuthenticated={status === "authenticated"} userRole={session?.user?.role} variant="dashboard" />
+        </div>
+        <div className="hidden md:block">
+          <CompanyDashboardSidebar />
+        </div>
 
         <main className="flex-1 p-6">
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-2xl font-bold">Company Dashboard</h1>
             <div className="flex items-center gap-2">
-              <Button onClick={() => setIsCreatePositionOpen(true)}>
+              {/* <Button onClick={() => setIsCreatePositionOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 New Position
               </Button>
               <Button variant="outline" onClick={() => setIsUploadResumeOpen(true)}>
                 <Upload className="mr-2 h-4 w-4" />
                 Upload Resume
-              </Button>
+              </Button> */}
             </div>
           </div>
 
@@ -224,7 +232,7 @@ export default function CompanyDashboard() {
                 <div className="relative w-full overflow-auto">
                   <table className="w-full caption-bottom text-sm">
                     <thead>
-                      <tr className="border-b bg-slate-50">
+                      <tr className="border-b bg-zinc-900">
                         <th className="h-12 px-4 text-left font-medium">Candidate</th>
                         <th className="h-12 px-4 text-left font-medium">Position</th>
                         <th className="h-12 px-4 text-left font-medium">Score</th>
