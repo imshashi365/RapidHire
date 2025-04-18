@@ -27,19 +27,11 @@ interface InterviewState {
   currentQuestion: string
   questionNumber: number
   transcript: string
-  aiResponse: string
-  score: number | null
-  feedback: {
-    strengths: string[]
-    weaknesses: string[]
-    overallFeedback: string
-  } | null
-  answers: {
-    question: string
-    answer: string
-    score: number
-    feedback: string
-  }[]
+  messages: Array<{
+    role: 'assistant' | 'user'
+    content: string
+    timestamp: string
+  }>
 }
 
 interface SpeechRecognitionResult {
@@ -120,10 +112,7 @@ export default function InterviewSession() {
     currentQuestion: "",
     questionNumber: 0,
     transcript: "",
-    aiResponse: "",
-    score: null,
-    feedback: null,
-    answers: []
+    messages: []
   })
 
   const [isRecording, setIsRecording] = useState(false)
@@ -202,121 +191,74 @@ export default function InterviewSession() {
 
         vapiRef.current.on("call-end", async () => {
           console.log("Call ended")
-          setInterview(prev => ({ ...prev, isEnded: true, isRecording: false }))
+          setInterview(prev => ({ ...prev, isEnded: true }))
           
-          try {
-            // Validate interview data before scoring
-            if (!params.id) {
-              throw new Error("Interview ID is missing")
-            }
+          // Wait for any pending state updates
+          await new Promise(resolve => setTimeout(resolve, 2000))
+          
+          // Get the latest conversation data
+          const currentConversation = interview.messages || []
+          console.log("Current conversation data:", currentConversation)
+          
+          if (currentConversation.length > 0) {
+            try {
+              // Prepare the conversation for analysis
+              const conversationText = currentConversation
+                .map(msg => `${msg.role}: ${msg.content}`)
+                .join('\n')
 
-            // Get the latest interview state
-            const currentInterview = interview
-            console.log("Current interview state:", {
-              answers: currentInterview.answers,
-              answerCount: currentInterview.answers.length,
-              transcript: currentInterview.transcript
-            })
+              console.log("Generating feedback for conversation:", conversationText)
 
-            // If we have a transcript but it's not in answers yet, add it
-            if (currentInterview.transcript && !currentInterview.isEnded) {
-              setInterview(prev => {
-                const newAnswers = [
-                  ...prev.answers,
-                  {
-                    question: prev.currentQuestion,
-                    answer: prev.transcript,
-                    score: 0,
-                    feedback: ""
-                  }
-                ]
-                return {
-                  ...prev,
-                  answers: newAnswers,
-                  transcript: ""
-                }
-              })
-            }
-
-            // Wait a moment for state to update
-            await new Promise(resolve => setTimeout(resolve, 100))
-
-            // Get the updated interview state
-            const updatedInterview = interview
-            console.log("Updated interview state:", {
-              answers: updatedInterview.answers,
-              answerCount: updatedInterview.answers.length
-            })
-
-            if (!updatedInterview.answers || updatedInterview.answers.length === 0) {
-              throw new Error("No interview answers found to score")
-            }
-
-            console.log("Submitting interview answers for scoring:", {
-              interviewId: params.id,
-              answerCount: updatedInterview.answers.length,
-              answers: updatedInterview.answers
-            })
-
-            // Submit answers for scoring
-            const response = await fetch("/api/interviews/score", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                interviewId: params.id,
-                answers: updatedInterview.answers
-              })
-            })
-
-            if (!response.ok) {
-              const errorData = await response.json()
-              console.error("Interview scoring error:", {
-                status: response.status,
-                error: errorData,
-                interviewId: params.id
-              })
-
-              if (response.status === 404) {
-                throw new Error("Interview not found. Please contact support if this issue persists.")
-              } else if (response.status === 400) {
-                throw new Error("Invalid interview data. Please try again.")
-              } else if (response.status === 401) {
-                throw new Error("You are not authorized to score this interview.")
-              } else {
-                throw new Error(errorData.error || "Failed to process interview scoring")
+              // Ensure we have position data
+              if (!interviewData?.position) {
+                console.error("No position data available")
+                toast.error("Failed to generate feedback: Position data missing")
+                return
               }
+
+              // Call the feedback generation API
+              const response = await fetch('/api/interview/feedback', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  interviewId: params.id,
+                  conversation: conversationText,
+                  position: interviewData.position
+                })
+              })
+
+              if (!response.ok) {
+                throw new Error('Failed to generate feedback')
+              }
+
+              const feedback = await response.json()
+              
+              // Update interview state with feedback
+              setInterview(prev => ({
+                ...prev,
+                isCompleted: true
+              }))
+
+              // Show success message
+              toast.success('Interview completed! Feedback generated.')
+
+              // Redirect to success page after a short delay
+              setTimeout(() => {
+                router.push('/dashboard/candidate/interview/start/success')
+              }, 2000)
+            } catch (error) {
+              console.error('Error generating feedback:', error)
+              toast.error('Failed to generate feedback')
             }
-
-            const result = await response.json()
-            console.log("Interview scoring result:", {
-              score: result.score,
-              hasFeedback: !!result.feedback
-            })
-
-            setInterview(prev => ({
-              ...prev,
-              score: result.score,
-              feedback: result.feedback
-            }))
-
-            toast.success("Interview completed successfully!")
-          } catch (error) {
-            console.error("Error processing interview scoring:", {
-              error,
-              interviewId: params.id,
-              answerCount: interview.answers?.length,
-              transcript: interview.transcript,
-              isEnded: interview.isEnded
-            })
-            
-            const errorMessage = error instanceof Error 
-              ? error.message 
-              : "Failed to process interview results"
-            
-            toast.error(errorMessage)
-            setError(errorMessage)
+          } else {
+            console.warn("No conversation data available for feedback generation")
+            toast.warning("No conversation data available for feedback")
+            // Still redirect to success page
+            setTimeout(() => {
+              router.push('/dashboard/candidate/interview/start/success')
+            }, 1000)
           }
         })
 
@@ -339,39 +281,50 @@ export default function InterviewSession() {
         })
 
         vapiRef.current.on("error", (error: any) => {
-          console.error("VAPI error event details:", {
-            error,
-            errorType: typeof error,
-            errorString: String(error),
-            errorJSON: JSON.stringify(error),
+          // Log the raw error first
+          console.log("Raw VAPI error:", error)
+
+          // Create a safe error object with fallbacks
+          const safeError = {
+            message: error?.message || error?.errorMsg || "Unknown error occurred",
+            code: error?.code || error?.errorCode || "UNKNOWN",
+            action: error?.action || "unknown",
             timestamp: new Date().toISOString(),
             vapiState: {
               isStarted: vapiRef.current?.isStarted,
               isEnded: vapiRef.current?.isEnded,
               isRecording: vapiRef.current?.isRecording
             }
-          })
-
-          // Extract error message with fallbacks
-          let errorMessage = "An error occurred during the interview"
-          if (error) {
-            if (typeof error === 'string') {
-              errorMessage = error
-            } else if (error.message) {
-              errorMessage = error.message
-            } else if (error.toString && error.toString() !== '[object Object]') {
-              errorMessage = error.toString()
-            }
           }
 
-          // Show error to user
-          toast.error(errorMessage)
-          setError(errorMessage)
+          // Log the structured error
+          console.error("VAPI error event details:", safeError)
+
+          // Handle specific error types
+          if (safeError.message.includes("Meeting has ended")) {
+            console.log("Meeting ended normally")
+            setInterview(prev => ({ ...prev, isEnded: true }))
+            // Don't show error toast for normal meeting end
+            return
+          }
+
+          if (safeError.action === "camera-error") {
+            console.warn("Camera error occurred:", safeError.message)
+            toast.warning("Camera access issue. Please check your camera permissions.")
+            return
+          }
+
+          // Show error to user only for unexpected errors
+          if (!safeError.message.includes("Meeting has ended")) {
+            toast.error(safeError.message)
+            setError(safeError.message)
+          }
+          
           setLoadingState(null)
           setIsLoading(false)
           
           // Only stop VAPI if it's a critical error
-          if (error?.action !== 'camera-error') {
+          if (safeError.action !== 'camera-error' && !safeError.message.includes("Meeting has ended")) {
             if (vapiRef.current) {
               try {
                 console.log("Attempting to stop VAPI after error...")
@@ -430,31 +383,6 @@ export default function InterviewSession() {
           if (videoRef.current) {
             videoRef.current.srcObject = stream
           }
-
-          // Initialize MediaRecorder
-          mediaRecorderRef.current = new MediaRecorder(stream)
-          mediaRecorderRef.current.ondataavailable = (event) => {
-            if (event.data.size > 0) {
-              const formData = new FormData()
-              formData.append('recording', new Blob([event.data], { type: 'video/webm' }))
-              formData.append('interviewId', params.id as string)
-              
-              fetch('/api/interview/upload-recording', {
-                method: 'POST',
-                body: formData
-              })
-              .then(response => response.json())
-              .then(data => {
-                console.log('Recording uploaded:', data)
-              })
-              .catch(error => {
-                console.error('Error uploading recording:', error)
-              })
-            }
-          }
-
-          // Start recording
-          mediaRecorderRef.current.start(1000) // Collect data every second
           
         } catch (error) {
           console.error("Error accessing camera:", error)
@@ -462,7 +390,7 @@ export default function InterviewSession() {
           
           // Handle specific permission errors
           if (error instanceof Error && error.name === 'NotAllowedError') {
-            toast.error("Camera access denied. Continuing without video recording.")
+            toast.error("Camera access denied. Continuing without video.")
             // Continue without video but keep the interview going
             setInterview(prev => ({ ...prev, isStarted: true }))
             // Start VAPI call if not already started
@@ -477,7 +405,29 @@ export default function InterviewSession() {
 
       initializeCamera()
     }
-  }, [interview.isStarted, isVideoOn, isMicOn, params.id])
+  }, [interview.isStarted, isVideoOn, isMicOn])
+
+  // Cleanup camera stream
+  useEffect(() => {
+    return () => {
+      if (videoRef.current && videoRef.current.srcObject) {
+        const stream = videoRef.current.srcObject as MediaStream
+        stream.getTracks().forEach(track => track.stop())
+        videoRef.current.srcObject = null
+      }
+    }
+  }, [])
+
+  // Handle interview answers
+  useEffect(() => {
+    if (interview.transcript && !interview.isEnded) {
+      console.log("New transcript received:", interview.transcript)
+      setInterview(prev => ({
+        ...prev,
+        transcript: "" // Clear transcript after processing
+      }))
+    }
+  }, [interview.transcript, interview.isEnded])
 
   // Start VAPI call when interview data is ready
   const startVapiCall = async () => {
@@ -489,6 +439,12 @@ export default function InterviewSession() {
       setIsLoading(true)
       setLoadingState('starting')
       setError(null)
+
+      // Get questions from position data and handle both string and array formats
+      const questions = interviewData.position?.questions || []
+      const questionList = Array.isArray(questions) 
+        ? questions.join('\n')
+        : questions || ""
 
       const callConfig = {
         name: "AI Recruiter",
@@ -510,14 +466,12 @@ export default function InterviewSession() {
           messages: [
             {
               role: "system",
-              content: `You are an AI voice assistant conducting interviews.
+              content: `You are an AI voice AI Recruiter AGENT conducting interviews.
                 Your job is to ask candidates provided interview questions, assess their responses.
                 Begin the conversation with a friendly introduction, setting a relaxed yet professional tone.
                 Ask one question at a time and wait for the candidate's response before proceeding.
                 Keep the questions clear and concise.
-                Questions: ${Array.isArray(interviewData.position.questions) 
-                  ? interviewData.position.questions.join("\n")
-                  : "No questions available"}
+                Questions: ${questionList}
                 If the candidate struggles, offer hints or rephrase the question without giving away the answer.
                 Provide brief, encouraging feedback after each answer.
                 Keep the conversation natural and engaging.
@@ -556,29 +510,12 @@ export default function InterviewSession() {
     }
   }, [interview.isStarted, interviewData, session, params.id])
 
-  // Handle interview answers
-  useEffect(() => {
-    if (interview.transcript && !interview.isEnded) {
-      console.log("New transcript received:", interview.transcript)
-      setInterview(prev => {
-        const newAnswers = [
-          ...prev.answers,
-          {
-            question: prev.currentQuestion,
-            answer: prev.transcript,
-            score: 0,
-            feedback: ""
-          }
-        ]
-        console.log("Updated answers:", newAnswers)
-        return {
-          ...prev,
-          answers: newAnswers,
-          transcript: "" // Clear transcript after adding to answers
-        }
-      })
-    }
-  }, [interview.transcript, interview.isEnded])
+  // Helper functions
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60)
+    const remainingSeconds = seconds % 60
+    return `${String(minutes).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`
+  }
 
   const startInterview = () => {
     if (!interviewData?.position?.title) {
@@ -595,9 +532,12 @@ export default function InterviewSession() {
   const confirmExit = async () => {
     try {
       if (vapiRef.current) {
-        await vapiRef.current.stop()
+        // Use VAPI's say method to end the call gracefully
+        vapiRef.current.say("Thank you for your time. The interview is now complete.", true)
+      } else {
+        // If VAPI is not available, just redirect
+        router.push('/dashboard/candidate/interview/start/success')
       }
-      router.push("/dashboard/candidate/interviews")
     } catch (error) {
       console.error("Error exiting interview:", error)
       toast.error("Failed to exit interview properly")
@@ -606,11 +546,176 @@ export default function InterviewSession() {
     }
   }
 
-  const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60)
-    const remainingSeconds = seconds % 60
-    return `${String(minutes).padStart(2, "0")}:${String(remainingSeconds).padStart(2, "0")}`
+  // Add new VAPI features
+  const handleMuteToggle = () => {
+    if (vapiRef.current) {
+      const isMuted = vapiRef.current.isMuted()
+      vapiRef.current.setMuted(!isMuted)
+      setIsMicOn(!isMuted)
+    }
   }
+
+  // Handle VAPI messages
+  useEffect(() => {
+    if (!vapiRef.current) return
+
+    const handleMessage = (message: any) => {
+      console.log("Received VAPI message:", message)
+      
+      if (message.type === "assistant-message") {
+        console.log("Assistant message:", {
+          content: message.content,
+          timestamp: new Date().toISOString()
+        })
+        setInterview(prev => ({
+          ...prev,
+          messages: [
+            ...prev.messages,
+            {
+              role: "assistant",
+              content: message.content,
+              timestamp: new Date().toISOString()
+            }
+          ]
+        }))
+      } else if (message.type === "transcript") {
+        console.log("User transcript:", {
+          content: message.transcript,
+          timestamp: new Date().toISOString()
+        })
+        setInterview(prev => ({
+          ...prev,
+          messages: [
+            ...prev.messages,
+            {
+              role: "user",
+              content: message.transcript,
+              timestamp: new Date().toISOString()
+            }
+          ]
+        }))
+      }
+
+      // Log the full conversation after each update
+      setInterview(prev => {
+        console.log("Current conversation state:", {
+          totalMessages: prev.messages.length,
+          messages: prev.messages.map(msg => ({
+            role: msg.role,
+            content: msg.content,
+            timestamp: msg.timestamp
+          }))
+        })
+        return prev
+      })
+    }
+
+    vapiRef.current.on("message", handleMessage)
+
+    return () => {
+      if (vapiRef.current) {
+        vapiRef.current.off("message", handleMessage)
+      }
+    }
+  }, [])
+
+  // Add a separate effect to log conversation changes
+  useEffect(() => {
+    console.log("Conversation updated:", {
+      totalMessages: interview.messages.length,
+      messages: interview.messages.map(msg => ({
+        role: msg.role,
+        content: msg.content,
+        timestamp: msg.timestamp
+      }))
+    })
+  }, [interview.messages])
+
+  // Update handleEndInterview to ensure conversation is saved
+  const handleEndInterview = async () => {
+    try {
+      if (vapiRef.current) {
+        console.log("Starting interview end process")
+        
+        // Get current conversation state
+        const currentConversation = interview.messages
+        console.log("Current conversation before ending:", 
+          JSON.stringify(currentConversation, null, 2))
+        
+        // End the VAPI call gracefully
+        console.log("Stopping VAPI call")
+        await vapiRef.current.stop()
+        
+        // Wait for any pending messages
+        console.log("Waiting for pending messages...")
+        await new Promise(resolve => setTimeout(resolve, 2000))
+        
+        // Update interview state
+        setInterview(prev => ({ ...prev, isEnded: true }))
+        
+        // Save conversation if we have data
+        if (currentConversation.length > 0) {
+          console.log("Saving conversation with length:", currentConversation.length)
+          console.log("Conversation content:", JSON.stringify(currentConversation, null, 2))
+          await saveConversation()
+        } else {
+          console.warn("No conversation data to save")
+        }
+        
+        // Show success message and redirect
+        toast.success('Interview completed successfully!')
+        setTimeout(() => {
+          router.push('/dashboard/candidate/interview/start/success')
+        }, 2000)
+      }
+    } catch (error) {
+      console.error('Error ending interview:', error)
+      toast.error('Failed to end interview properly')
+    }
+  }
+
+  // Update saveConversation to include more logging
+  const saveConversation = async () => {
+    console.log("Attempting to save conversation:", 
+      JSON.stringify(interview.messages, null, 2))
+    if (!interview.messages.length) {
+      console.warn("No conversation data to save")
+      return
+    }
+
+    try {
+      const response = await fetch(`/api/interviews/${params.id}/conversation`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          conversation: interview.messages
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to save conversation')
+      }
+
+      console.log("Conversation saved successfully. Saved data:", 
+        JSON.stringify(interview.messages, null, 2))
+      toast.success('Conversation saved successfully')
+    } catch (error) {
+      console.error('Error saving conversation:', error)
+      toast.error('Failed to save conversation')
+    }
+  }
+
+  // Add volume level monitoring
+  useEffect(() => {
+    if (vapiRef.current) {
+      vapiRef.current.on("volume-level", (volume: number) => {
+        // console.log("Assistant volume level:", volume)
+        // You can use this for visual feedback if needed
+      })
+    }
+  }, [])
 
   if (!session?.user) {
     return (
@@ -660,6 +765,18 @@ export default function InterviewSession() {
                 <p className="text-gray-400 text-center">
                   {interview.currentQuestion || "Ready to start your interview"}
                 </p>
+                <div className="mt-4 w-full max-h-[200px] overflow-y-auto">
+                  {interview.messages.map((message, index) => (
+                    message.role === "assistant" && (
+                      <div key={index} className="mb-2 p-2 bg-gray-800 rounded-lg">
+                        <p className="text-sm text-gray-300">{message.content}</p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {new Date(message.timestamp).toLocaleTimeString()}
+                        </p>
+                      </div>
+                    )
+                  ))}
+                </div>
               </Card>
 
               <Card className="p-6 flex flex-col items-center justify-center min-h-[600px] bg-gray-900 border-gray-800">
@@ -681,6 +798,18 @@ export default function InterviewSession() {
                 <p className="text-gray-400 text-center">
                   {isRecording ? "Recording..." : "Click the microphone to start"}
                 </p>
+                <div className="mt-4 w-full max-h-[200px] overflow-y-auto">
+                  {interview.messages.map((message, index) => (
+                    message.role === "user" && (
+                      <div key={index} className="mb-2 p-2 bg-gray-800 rounded-lg">
+                        <p className="text-sm text-gray-300">{message.content}</p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {new Date(message.timestamp).toLocaleTimeString()}
+                        </p>
+                      </div>
+                    )
+                  ))}
+                </div>
               </Card>
             </div>
 
@@ -736,11 +865,11 @@ export default function InterviewSession() {
                   <Button
                     size="lg"
                     variant="destructive"
-                    className="rounded-full w-12 h-12"
-                    onClick={handleExitInterview}
-                    disabled={!interview.isStarted || interview.isEnded}
+                    className="px-8"
+                    onClick={handleEndInterview}
+                    disabled={interview.isEnded}
                   >
-                    <PhoneCall className="h-6 w-6" />
+                    End Interview
                   </Button>
                 </>
               )}

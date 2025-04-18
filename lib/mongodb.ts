@@ -17,6 +17,10 @@ if (process.env.NODE_ENV === "development") {
     _mongoClientPromise?: Promise<MongoClient>
   }
 
+
+
+
+  
   if (!globalWithMongo._mongoClientPromise) {
     client = new MongoClient(uri, options)
     globalWithMongo._mongoClientPromise = client.connect()
@@ -51,4 +55,3 @@ export async function connectToDatabase() {
 // Export a module-scoped MongoClient promise. By doing this in a
 // separate module, the client can be shared across functions.
 export default clientPromise
-

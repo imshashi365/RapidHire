@@ -33,7 +33,7 @@ interface Position {
   type: string
   workLocation: string
   description: string
-  requirements: string[]
+  requirements: string[] | string
   minExperience: number
   maxExperience: number
   salaryRange: {
@@ -312,9 +312,15 @@ const PositionPage = ({ params }: PositionPageProps) => {
               <div className="mb-8">
                 <h2 className="text-xl font-semibold mb-4 text-white">Requirements</h2>
                 <ul className="list-disc pl-5 space-y-2 text-gray-300">
-                  {position.requirements?.map((req, index) => (
-                    <li key={index}>{req}</li>
-                  ))}
+                  {Array.isArray(position.requirements) 
+                    ? position.requirements.map((req: string, index: number) => (
+                        <li key={index}>{req}</li>
+                      ))
+                    : typeof position.requirements === 'string' 
+                      ? position.requirements.split('\n').map((req: string, index: number) => (
+                          <li key={index}>{req.trim()}</li>
+                        ))
+                      : null}
                 </ul>
               </div>
 

@@ -43,10 +43,18 @@ export async function POST(req: Request) {
 
 export async function GET() {
   try {
+    const session = await getServerSession(authOptions)
+    if (!session || session.user.role !== "company") {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      )
+    }
+
     const client = await clientPromise
     const db = client.db()
     const positions = await db.collection('positions')
-      .find({})
+      .find({ companyId: new ObjectId(session.user.id) })
       .sort({ createdAt: -1 })
       .toArray()
 
@@ -81,20 +89,60 @@ export async function PUT(req: Request) {
       )
     }
 
-    const { id, ...updates } = await req.json()
+    const { searchParams } = new URL(req.url)
+    const id = searchParams.get("id")
     
-    const success = await updatePosition(id, updates)
+    if (!id) {
+      return NextResponse.json(
+        { error: "Position ID is required" },
+        { status: 400 }
+      )
+    }
 
-    if (!success) {
+    const updates = await req.json()
+    const client = await clientPromise
+    const db = client.db()
+
+    // Update the position
+    const result = await db.collection('positions').updateOne(
+      { 
+        _id: new ObjectId(id),
+        companyId: new ObjectId(session.user.id) // Ensure company owns the position
+      },
+      {
+        $set: {
+          ...updates,
+          updatedAt: new Date()
+        }
+      }
+    )
+
+    if (result.matchedCount === 0) {
       return NextResponse.json(
         { error: "Position not found" },
         { status: 404 }
       )
     }
 
-    return NextResponse.json(
-      { message: "Position updated successfully" }
-    )
+    // Fetch the updated position
+    const updatedPosition = await db.collection('positions').findOne({
+      _id: new ObjectId(id)
+    })
+
+    if (!updatedPosition) {
+      return NextResponse.json(
+        { error: "Failed to fetch updated position" },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json({
+      success: true,
+      position: {
+        ...updatedPosition,
+        _id: updatedPosition._id.toString()
+      }
+    })
   } catch (error) {
     console.error("Update position error:", error)
     return NextResponse.json(

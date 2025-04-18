@@ -106,8 +106,12 @@ export function PositionModal({
         type: position.type,
         workLocation: position.workLocation,
         description: position.description,
-        requirements: position.requirements.join("\n"),
-        questions: position.questions.join("\n"),
+        requirements: Array.isArray(position.requirements) 
+          ? position.requirements.join("\n")
+          : position.requirements || "",
+        questions: Array.isArray(position.questions)
+          ? position.questions.join("\n")
+          : position.questions || "",
         minExperience: position.minExperience,
         maxExperience: position.maxExperience,
         salaryRange: {
