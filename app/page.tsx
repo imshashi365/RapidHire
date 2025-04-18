@@ -75,7 +75,6 @@ export default function HomePage() {
                   <span className="text-[#229799]">Transform your hiring</span><br /> with AI Recruiter AGENT
                 </h1>
                 <div className="relative justify-center items-center">
-
                 </div>
 
                 <p className="text-xl md:text-2xl text-gray-400 max-w-3xl mx-auto">
