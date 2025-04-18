@@ -66,11 +66,11 @@ export default function HomePage() {
           <div className="container relative z-10 mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex flex-col items-center text-center max-w-5xl mx-auto space-y-12">
               <div className="space-y-8">
-                <div className="flex items-center justify-center gap-2 text-sm">
+{/*                 <div className="flex items-center justify-center gap-2 text-sm">
                   <span className="text-gray-400">Backed by</span>
                   <span className="bg-[#ff6b00] text-white px-1">Y</span>
                   <span className="text-[#ff6b00]">Combinator</span>
-                </div>
+                </div> */}
                 <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tighter leading-tight">
                   <span className="text-[#229799]">Transform your hiring</span><br /> with AI Recruiter AGENT
                 </h1>
