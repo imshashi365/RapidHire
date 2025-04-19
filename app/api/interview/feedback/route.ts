@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 
 // Fallback feedback in case API fails
 const fallbackFeedback = {
@@ -17,164 +18,272 @@ const fallbackFeedback = {
   }
 }
 
+interface ApiError extends Error {
+  code?: string;
+  details?: unknown;
+}
+
+interface FeedbackResponse {
+  feedback: {
+    rating: {
+      technicalSkills: number;
+      communication: number;
+      problemSolving: number;
+      experience: number;
+    };
+    summary: string;
+    recommendation: string;
+    recommendationMsg: string;
+  };
+}
+
+interface Position {
+  title?: string;
+  minExperience?: number;
+  maxExperience?: number;
+  requirements?: string[];
+  questions?: string[];
+}
+
+interface RequestBody {
+  interviewId: string;
+  conversation: string;
+  position?: Position;
+}
+
 export async function POST(request: Request) {
   try {
     // Check authentication
     const session = await getServerSession(authOptions)
     if (!session?.user) {
+      console.error('Authentication failed: No valid session found')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    // Parse request body
-    const body = await request.json()
+    // Parse and validate request body
+    let body: RequestBody
+    try {
+      body = await request.json()
+    } catch (error) {
+      console.error('Invalid JSON in request body:', error)
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+    }
+
     const { interviewId, conversation, position } = body
 
-    if (!interviewId || !conversation) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      )
+    // Validate required fields
+    if (!interviewId || typeof interviewId !== 'string') {
+      console.error('Invalid or missing interviewId:', interviewId)
+      return NextResponse.json({ error: 'Invalid or missing interviewId' }, { status: 400 })
+    }
+
+    if (!conversation || typeof conversation !== 'string') {
+      console.error('Invalid or missing conversation:', conversation)
+      return NextResponse.json({ error: 'Invalid or missing conversation' }, { status: 400 })
+    }
+
+    // Validate position object if provided
+    if (position) {
+      if (typeof position !== 'object') {
+        console.error('Invalid position format:', position)
+        return NextResponse.json({ error: 'Invalid position format' }, { status: 400 })
+      }
+
+      if (position.requirements && !Array.isArray(position.requirements)) {
+        console.error('Invalid requirements format:', position.requirements)
+        return NextResponse.json({ error: 'Invalid requirements format' }, { status: 400 })
+      }
+
+      if (position.questions && !Array.isArray(position.questions)) {
+        console.error('Invalid questions format:', position.questions)
+        return NextResponse.json({ error: 'Invalid questions format' }, { status: 400 })
+      }
     }
 
     try {
-      // Generate feedback using Together.ai API
-      const response = await fetch('https://api.together.xyz/inference', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.TOGETHER_API_KEY}`
-        },
-        body: JSON.stringify({
-          model: 'mistralai/Mixtral-8x7B-Instruct-v0.1',
-          prompt: `You are an AI expert at evaluating job interviews. Your task is to analyze an interview conversation between an AI interviewer and a candidate for the position of ${
-            position?.title || 'a job role'
-          }.
-          
-          Provide honest, fair, and insightful feedback about the candidate's performance.
-          Evaluate the candidate on the following criteria on a scale of 0-100:
-          - Technical Skills: Rate their knowledge and expertise in the required technical areas (0-100)
-          - Communication: Rate how effectively they communicated their thoughts and ideas (0-100)
-          - Problem Solving: Rate how well they tackled challenges presented during the interview (0-100)
-          - Experience: Rate their relevant prior experience for the role (0-100)
-          
-          Also provide:
-          - A concise 3-line summary of the interview
-          - A clear recommendation on whether to hire this candidate or not with a reason
-          
-          Here's the interview conversation to evaluate:
-          
-          ${conversation}
-          
-          Output your evaluation in the following JSON format only without additional text:
-          {
-            "feedback": {
-              "rating": {
-                "technicalSkills": <number between 0-100>,
-                "communication": <number between 0-100>,
-                "problemSolving": <number between 0-100>,
-                "experience": <number between 0-100>
-              },
-              "summary": "<3-line summary>",
-              "recommendation": "<Yes or No>",
-              "recommendationMsg": "<Reason for recommendation>"
-            }
-          }`,
-          max_tokens: 1024,
-          temperature: 0.7,
-          top_p: 0.7,
-          top_k: 50,
-          repetition_penalty: 1.1
-        })
-      })
-
-      if (!response.ok) {
-        throw new Error(`Together.ai API error: ${response.statusText}`)
+      // Initialize Gemini API
+      if (!process.env.GOOGLE_API_KEY) {
+        throw new Error('GOOGLE_API_KEY is not configured')
       }
 
-      const data = await response.json()
+      const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
+
+      // Use Gemini 2.0 Flash for faster, structured responses
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+
+      const prompt = `You are an AI expert at evaluating job interviews with a very strict evaluation criteria. Your goal is to filter out approximately 99% of candidates by maintaining extremely high standards. Analyze this interview conversation between an AI interviewer and a candidate for ${position?.title || 'a job role'}.
+
+Position Details:
+- Experience Required: ${position?.minExperience || 'Not specified'} to ${position?.maxExperience || 'Not specified'} years
+- Required Skills: ${position?.requirements?.join(', ') || 'Not specified'}
+- Key Questions: ${position?.questions?.join(', ') || 'Not specified'}
+
+Evaluation Criteria:
+1. Interview Completion & Response Quality:
+   - Full completion of interview
+   - Quality and depth of answers
+   - Specific examples provided
+   - Relevance to position
+
+2. Rating Criteria (0-100) with STRICT evaluation:
+   - Technical Skills (80% weight): Knowledge depth, expertise, and ability to solve complex problems
+   - Communication (5% weight): Clarity, professionalism, and ability to articulate thoughts
+   - Problem Solving (10% weight): Approach, methodology, and ability to think critically
+   - Experience (5% weight): Relevance and depth of past experience
+
+IMPORTANT GUIDELINES:
+- Be extremely critical in your evaluation
+- Only candidates with exceptional performance should receive high scores
+- Technical skills are the primary determinant of success
+- A candidate must demonstrate mastery in their technical domain
+- Communication skills should be evaluated based on clarity and precision
+- Problem-solving abilities should be assessed based on approach and methodology
+- Experience should be evaluated based on relevance and depth
+
+IMPORTANT: Respond ONLY with a valid JSON object in this exact format, no additional text:
+{
+  "feedback": {
+    "rating": {
+      "technicalSkills": <number between 0-100>,
+      "communication": <number between 0-100>,
+      "problemSolving": <number between 0-100>,
+      "experience": <number between 0-100>
+    },
+    "summary": "<concise 3-line summary>",
+    "recommendation": "<Yes/No>",
+    "recommendationMsg": "<brief reason>"
+  }
+}
+
+Interview Conversation:
+${conversation}`
+
+      // Generate content with Gemini
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const feedbackText = response.text();
       
-      // Extract the JSON from the response text
-      const feedbackText = data.output?.choices?.[0]?.text || data.output?.text || data.text || data.choices?.[0]?.text
-      
-      if (!feedbackText) {
-        console.error("Unexpected Together.ai response format:", data)
-        throw new Error("Could not extract feedback text from Together.ai response")
-      }
-      
-      // Try to find a valid JSON object in the response
-      const jsonMatch = feedbackText.match(/\{[\s\S]*\}/)
-      
-      if (!jsonMatch) {
-        console.error("Could not find JSON in feedback text:", feedbackText)
-        throw new Error("Could not extract JSON from Together.ai response")
-      }
-      
-      let feedbackData
+      let feedbackData: FeedbackResponse
       try {
-        feedbackData = JSON.parse(jsonMatch[0])
-      } catch (parseError) {
-        console.error("Error parsing JSON:", parseError)
-        console.error("Raw JSON string:", jsonMatch[0])
-        // Try to clean the JSON string
-        const cleanedJson = jsonMatch[0]
+        // Clean up the response text before parsing
+        const cleanedText = feedbackText
           .replace(/\n/g, ' ')
-          .replace(/\r/g, '')
           .replace(/\t/g, ' ')
-          .replace(/\\/g, '\\\\')
-          .replace(/"/g, '\\"')
-          .replace(/'/g, '"')
-        try {
-          feedbackData = JSON.parse(cleanedJson)
-        } catch (cleanError) {
-          console.error("Error parsing cleaned JSON:", cleanError)
-          throw new Error("Failed to parse feedback JSON")
+          .replace(/\\"/g, '"')
+          .replace(/```json/g, '')
+          .replace(/```/g, '')
+          .trim();
+        
+        // Try to find a valid JSON object in the response
+        const jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+          throw new Error('No valid JSON object found in response');
         }
+        
+        feedbackData = JSON.parse(jsonMatch[0]) as FeedbackResponse;
+      } catch (parseError: unknown) {
+        const error = parseError as Error;
+        console.error("JSON Parse Error:", {
+          error: error.message,
+          stack: error.stack,
+          rawResponse: feedbackText,
+          cleanedText: feedbackText
+            .replace(/\n/g, ' ')
+            .replace(/\t/g, ' ')
+            .replace(/\\"/g, '"')
+            .replace(/```json/g, '')
+            .replace(/```/g, '')
+            .trim()
+        })
+        throw new Error(`Failed to parse feedback JSON: ${error.message}`)
       }
 
       // Validate the feedback structure
-      if (!feedbackData?.feedback?.rating || 
-          typeof feedbackData.feedback.rating.technicalSkills !== 'number' ||
-          typeof feedbackData.feedback.rating.communication !== 'number' ||
-          typeof feedbackData.feedback.rating.problemSolving !== 'number' ||
-          typeof feedbackData.feedback.rating.experience !== 'number' ||
-          !feedbackData.feedback.summary ||
-          !feedbackData.feedback.recommendation ||
-          !feedbackData.feedback.recommendationMsg ||
-          feedbackData.feedback.rating.technicalSkills < 0 || feedbackData.feedback.rating.technicalSkills > 100 ||
-          feedbackData.feedback.rating.communication < 0 || feedbackData.feedback.rating.communication > 100 ||
-          feedbackData.feedback.rating.problemSolving < 0 || feedbackData.feedback.rating.problemSolving > 100 ||
-          feedbackData.feedback.rating.experience < 0 || feedbackData.feedback.rating.experience > 100) {
-        console.error("Invalid feedback structure:", feedbackData)
-        throw new Error("Invalid feedback structure")
+      if (!feedbackData?.feedback?.rating) {
+        console.error("Invalid feedback structure - missing rating:", feedbackData)
+        throw new Error("Invalid feedback structure: missing rating object")
+      }
+
+      const { rating } = feedbackData.feedback
+      const validationErrors = []
+
+      if (typeof rating.technicalSkills !== 'number' || rating.technicalSkills < 0 || rating.technicalSkills > 100) {
+        validationErrors.push(`Invalid technicalSkills rating: ${rating.technicalSkills}`)
+      }
+      if (typeof rating.communication !== 'number' || rating.communication < 0 || rating.communication > 100) {
+        validationErrors.push(`Invalid communication rating: ${rating.communication}`)
+      }
+      if (typeof rating.problemSolving !== 'number' || rating.problemSolving < 0 || rating.problemSolving > 100) {
+        validationErrors.push(`Invalid problemSolving rating: ${rating.problemSolving}`)
+      }
+      if (typeof rating.experience !== 'number' || rating.experience < 0 || rating.experience > 100) {
+        validationErrors.push(`Invalid experience rating: ${rating.experience}`)
+      }
+      if (!feedbackData.feedback.summary) {
+        validationErrors.push("Missing summary")
+      }
+      if (!feedbackData.feedback.recommendation) {
+        validationErrors.push("Missing recommendation")
+      }
+      if (!feedbackData.feedback.recommendationMsg) {
+        validationErrors.push("Missing recommendationMsg")
+      }
+
+      if (validationErrors.length > 0) {
+        console.error("Feedback validation errors:", {
+          errors: validationErrors,
+          feedback: feedbackData
+        })
+        throw new Error(`Invalid feedback structure: ${validationErrors.join(', ')}`)
       }
 
       // Return the feedback
       return NextResponse.json(feedbackData)
-    } catch (apiError) {
-      console.error("Together.ai API error:", apiError)
+    } catch (apiError: unknown) {
+      const error = apiError as ApiError;
+      console.error("Gemini API error:", {
+        error: error.message,
+        stack: error.stack,
+        name: error.name,
+        code: error.code,
+        details: error.details
+      })
       // Return fallback feedback if API fails
       return NextResponse.json(fallbackFeedback)
     }
-  } catch (error) {
-    console.error("Error generating feedback:", error)
+  } catch (error: unknown) {
+    const err = error as ApiError;
+    console.error("Error generating feedback:", {
+      error: err.message,
+      stack: err.stack,
+      name: err.name,
+      code: err.code,
+      details: err.details
+    })
     // Return fallback feedback in case of any other errors
     return NextResponse.json(fallbackFeedback)
   }
 }
 
-// Helper function to calculate average score
-function calculateAverageScore(ratings: {
+// Helper function to calculate weighted average score
+function calculateWeightedAverageScore(ratings: {
   technicalSkills: number;
   communication: number;
   problemSolving: number;
   experience: number;
 }) {
-  const sum = 
-    ratings.technicalSkills + 
-    ratings.communication + 
-    ratings.problemSolving + 
-    ratings.experience;
+  const weights = {
+    technicalSkills: 0.80, // 80% weight
+    communication: 0.05,    // 5% weight
+    problemSolving: 0.10,  // 10% weight
+    experience: 0.05       // 5% weight
+  };
   
-  // Return score out of 100 (average of the 4 categories, then multiplied by 10)
-  return Math.round((sum / 4) * 10);
+  const weightedSum = 
+    ratings.technicalSkills * weights.technicalSkills + 
+    ratings.communication * weights.communication + 
+    ratings.problemSolving * weights.problemSolving + 
+    ratings.experience * weights.experience;
+  
+  return Math.round(weightedSum);
 } 

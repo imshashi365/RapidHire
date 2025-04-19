@@ -178,8 +178,8 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
   }
 
   const handleEndInterview = () => {
-    // Navigate to success page
-    router.push(`/dashboard/candidate/interview/${params.id}/success`)
+    // Navigate to success page with interviewId as query parameter
+    router.push(`/dashboard/candidate/interview/start/success?interviewId=${params.id}`)
   }
 
   if (isLoading) {

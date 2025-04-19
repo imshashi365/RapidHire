@@ -29,13 +29,21 @@ export async function POST(
       );
     }
 
-    // Calculate overall score
-    const overallScore = Math.round(
-      (feedback.rating.technicalSkills +
-       feedback.rating.communication +
-       feedback.rating.problemSolving +
-       feedback.rating.experience) / 4
-    );
+    // Calculate overall score using weighted average
+    const weights = {
+      technicalSkills: 0.80, // 80% weight
+      communication: 0.05,    // 5% weight
+      problemSolving: 0.10,  // 10% weight
+      experience: 0.05       // 5% weight
+    };
+    
+    const weightedSum = 
+      feedback.rating.technicalSkills * weights.technicalSkills + 
+      feedback.rating.communication * weights.communication + 
+      feedback.rating.problemSolving * weights.problemSolving + 
+      feedback.rating.experience * weights.experience;
+    
+    const overallScore = Math.round(weightedSum);
 
     // Add overall score to feedback object
     const feedbackWithScore = {
@@ -130,7 +138,8 @@ export async function GET(
         },
         summary: interview.feedback.summary,
         recommendation: interview.feedback.recommendation,
-        recommendationMsg: interview.feedback.recommendationMsg
+        recommendationMsg: interview.feedback.recommendationMsg,
+        overallScore: interview.feedback.overallScore || interview.score
       }
     });
   } catch (error) {

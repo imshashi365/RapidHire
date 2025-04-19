@@ -756,6 +756,19 @@ export default function InterviewSession() {
       
       console.log("Sending conversation for feedback:", conversationText);
       
+      // Format position data
+      const positionData = interviewData?.position ? {
+        title: interviewData.position.title || "Unknown Position",
+        minExperience: interviewData.position.minExperience || 0,
+        maxExperience: interviewData.position.maxExperience || 10,
+        requirements: Array.isArray(interviewData.position.requirements) 
+          ? interviewData.position.requirements 
+          : [],
+        questions: Array.isArray(interviewData.position.questions) 
+          ? interviewData.position.questions 
+          : []
+      } : { title: "Unknown Position" };
+      
       // Make API call to generate feedback
       const response = await fetch('/api/interview/feedback', {
         method: 'POST',
@@ -765,7 +778,7 @@ export default function InterviewSession() {
         body: JSON.stringify({
           interviewId: params.id,
           conversation: conversationText,
-          position: interviewData?.position || { title: "Unknown Position" }
+          position: positionData
         })
       });
 
