@@ -1,0 +1,19 @@
+datasource db {
+  provider = "mongodb"
+  url      = env("MONGODB_URI")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Interview {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId       String   @db.ObjectId
+  positionId   String   @db.ObjectId
+  conversation String?
+  status       String   @default("pending")
+  feedback     Json?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+} 

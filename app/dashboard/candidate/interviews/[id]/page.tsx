@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
 import { useSession } from "next-auth/react"
 import { useRouter, useParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -21,6 +21,18 @@ import {
 import Link from "next/link"
 import Vapi from "@vapi-ai/web"
 
+interface InterviewFeedback {
+  rating: {
+    technicalSkills: number;
+    communication: number;
+    problemSolving: number;
+    experience: number;
+  };
+  summary: string;
+  recommendation: string;
+  recommendationMsg: string;
+}
+
 interface InterviewState {
   isStarted: boolean
   isEnded: boolean
@@ -32,6 +44,9 @@ interface InterviewState {
     content: string
     timestamp: string
   }>
+  isCompleted?: boolean
+  feedback?: string
+  score?: number
 }
 
 interface SpeechRecognitionResult {
@@ -121,6 +136,8 @@ export default function InterviewSession() {
   const recognitionRef = useRef<any>(null)
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [showExitDialog, setShowExitDialog] = useState(false)
+  const [feedback, setFeedback] = useState<InterviewFeedback | null>(null);
+  const [feedbackLoading, setFeedbackLoading] = useState(false);
 
   // Fetch interview data
   useEffect(() => {
@@ -244,9 +261,9 @@ export default function InterviewSession() {
               // Show success message
               toast.success('Interview completed! Feedback generated.')
 
-              // Redirect to success page after a short delay
+              // Redirect to success page after a short delay with the interview ID
               setTimeout(() => {
-                router.push('/dashboard/candidate/interview/start/success')
+                router.push(`/dashboard/candidate/interview/start/success?interviewId=${params.id}`)
               }, 2000)
             } catch (error) {
               console.error('Error generating feedback:', error)
@@ -255,9 +272,9 @@ export default function InterviewSession() {
           } else {
             console.warn("No conversation data available for feedback generation")
             toast.warning("No conversation data available for feedback")
-            // Still redirect to success page
+            // Still redirect to success page with the interview ID
             setTimeout(() => {
-              router.push('/dashboard/candidate/interview/start/success')
+              router.push(`/dashboard/candidate/interview/start/success?interviewId=${params.id}`)
             }, 1000)
           }
         })
@@ -535,8 +552,8 @@ export default function InterviewSession() {
         // Use VAPI's say method to end the call gracefully
         vapiRef.current.say("Thank you for your time. The interview is now complete.", true)
       } else {
-        // If VAPI is not available, just redirect
-        router.push('/dashboard/candidate/interview/start/success')
+        // If VAPI is not available, just redirect with the interview ID
+        router.push(`/dashboard/candidate/interview/start/success?interviewId=${params.id}`)
       }
     } catch (error) {
       console.error("Error exiting interview:", error)
@@ -658,15 +675,19 @@ export default function InterviewSession() {
           console.log("Saving conversation with length:", currentConversation.length)
           console.log("Conversation content:", JSON.stringify(currentConversation, null, 2))
           await saveConversation()
+          
+          // Generate and save feedback
+          const feedbackResult = await generateFeedback(currentConversation)
+          if (feedbackResult) {
+            await saveFeedback(feedbackResult)
+          }
         } else {
           console.warn("No conversation data to save")
         }
         
         // Show success message and redirect
         toast.success('Interview completed successfully!')
-        setTimeout(() => {
-          router.push('/dashboard/candidate/interview/start/success')
-        }, 2000)
+        router.push(`/dashboard/candidate/interview/start/success?interviewId=${params.id}`)
       }
     } catch (error) {
       console.error('Error ending interview:', error)
@@ -716,6 +737,190 @@ export default function InterviewSession() {
       })
     }
   }, [])
+
+  const generateFeedback = async (conversation: Array<{role: string, content: string, timestamp: string}>) => {
+    try {
+      setFeedbackLoading(true);
+      console.log("Generating feedback for interview...");
+      
+      if (!conversation.length) {
+        console.warn("No conversation data available for feedback generation");
+        toast.warning("No conversation data available for feedback");
+        return null;
+      }
+      
+      // Format the conversation for the API request
+      const conversationText = conversation
+        .map(msg => `${msg.role}: ${msg.content}`)
+        .join('\n');
+      
+      console.log("Sending conversation for feedback:", conversationText);
+      
+      // Make API call to generate feedback
+      const response = await fetch('/api/interview/feedback', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          interviewId: params.id,
+          conversation: conversationText,
+          position: interviewData?.position || { title: "Unknown Position" }
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to generate feedback");
+      }
+
+      const feedbackData = await response.json();
+      console.log("Feedback generated:", feedbackData);
+      
+      setFeedback(feedbackData.feedback);
+      
+      // Save feedback to database
+      await saveFeedback(feedbackData.feedback);
+      
+      toast.success("Interview feedback generated successfully");
+      return feedbackData.feedback;
+      
+    } catch (error) {
+      console.error("Error generating feedback:", error);
+      toast.error("Failed to generate interview feedback");
+      return null;
+    } finally {
+      setFeedbackLoading(false);
+    }
+  };
+
+  const saveFeedback = async (feedbackData: InterviewFeedback) => {
+    try {
+      const response = await fetch(`/api/interviews/${params.id}/feedback`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          feedback: feedbackData
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to save feedback");
+      }
+      
+      console.log("Feedback saved successfully");
+    } catch (error) {
+      console.error("Error saving feedback:", error);
+      toast.error("Failed to save feedback to database");
+    }
+  };
+
+  // Update the VAPI event handlers
+  useEffect(() => {
+    if (!vapiRef.current) return
+
+    const handleMessage = (message: any) => {
+      console.log("Received VAPI message:", message)
+      
+      if (message.type === "assistant-message") {
+        console.log("Assistant message:", {
+          content: message.content,
+          timestamp: new Date().toISOString()
+        })
+        setInterview(prev => ({
+          ...prev,
+          messages: [
+            ...prev.messages,
+            {
+              role: "assistant",
+              content: message.content,
+              timestamp: new Date().toISOString()
+            }
+          ]
+        }))
+      } else if (message.type === "transcript") {
+        console.log("User transcript:", {
+          content: message.transcript,
+          timestamp: new Date().toISOString()
+        })
+        setInterview(prev => ({
+          ...prev,
+          messages: [
+            ...prev.messages,
+            {
+              role: "user",
+              content: message.transcript,
+              timestamp: new Date().toISOString()
+            }
+          ]
+        }))
+      }
+    }
+
+    const handleCallEnd = async () => {
+      console.log("Call ended");
+      setInterview(prev => ({ ...prev, isEnded: true }));
+      
+      // Wait for any pending state updates
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Get the latest conversation data
+      const currentConversation = interview.messages || [];
+      console.log("Current conversation data:", currentConversation);
+      
+      if (currentConversation.length > 0) {
+        try {
+          // Generate feedback from the conversation
+          const feedbackResult = await generateFeedback(currentConversation);
+          
+          if (feedbackResult) {
+            // Update interview state with feedback
+            setInterview(prev => ({
+              ...prev,
+              isCompleted: true,
+              feedback: feedbackResult.summary,
+              score: Math.round((
+                feedbackResult.rating.technicalSkills + 
+                feedbackResult.rating.communication + 
+                feedbackResult.rating.problemSolving + 
+                feedbackResult.rating.experience
+              ) * 10) // Convert to a score out of 100
+            }));
+            
+            // Show success message
+            toast.success('Interview completed! Feedback generated.');
+            
+            // Redirect to success page after a short delay with the interview ID
+            setTimeout(() => {
+              router.push(`/dashboard/candidate/interview/start/success?interviewId=${params.id}`);
+            }, 2000);
+          }
+        } catch (error) {
+          console.error('Error in feedback generation process:', error);
+          toast.error('Failed to process interview feedback');
+        }
+      } else {
+        console.warn("No conversation data available for feedback generation");
+        toast.warning("No conversation data available for feedback");
+        // Still redirect to success page with interview ID
+        setTimeout(() => {
+          router.push(`/dashboard/candidate/interview/start/success?interviewId=${params.id}`);
+        }, 1000);
+      }
+    }
+
+    vapiRef.current.on("message", handleMessage)
+    vapiRef.current.on("call-end", handleCallEnd)
+
+    return () => {
+      if (vapiRef.current) {
+        vapiRef.current.off("message", handleMessage)
+        vapiRef.current.off("call-end", handleCallEnd)
+      }
+    }
+  }, [interview.messages, params.id, interviewData?.position, router])
 
   if (!session?.user) {
     return (

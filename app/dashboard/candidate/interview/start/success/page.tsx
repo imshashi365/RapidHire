@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { CandidateDashboardHeader } from '@/components/candidate-dashboard-header'
 import { CandidateDashboardSidebar } from '@/components/candidate-dashboard-sidebar'
@@ -22,7 +22,8 @@ interface InterviewFeedback {
   interviewDate?: string
 }
 
-export default function InterviewSuccessPage() {
+// Separate component for the feedback content
+function FeedbackContent() {
   const searchParams = useSearchParams()
   const interviewId = searchParams.get('interviewId')
   const [loading, setLoading] = useState(true)
@@ -100,7 +101,7 @@ export default function InterviewSuccessPage() {
     }
 
     if (error) {
-      return <div className="text-center text-red-400">{error}</div>
+      return <div className="text-center text-gray-300">{error}</div>
     }
 
     if (!feedback?.feedback) {
@@ -166,15 +167,24 @@ export default function InterviewSuccessPage() {
   }
 
   return (
+    <div className="max-w-4xl mx-auto">
+      <h1 className="text-3xl font-bold mb-8 text-white">Interview Completed</h1>
+      {renderFeedback()}
+    </div>
+  )
+}
+
+// Main page component
+export default function InterviewSuccessPage() {
+  return (
     <div className="min-h-screen bg-gray-900">
       <CandidateDashboardHeader />
       <div className="flex">
         <CandidateDashboardSidebar />
         <main className="flex-1 p-8">
-          <div className="max-w-4xl mx-auto">
-            <h1 className="text-3xl font-bold mb-8 text-white">Interview Completed</h1>
-            {renderFeedback()}
-          </div>
+          <Suspense fallback={<div className="text-center text-gray-300">Loading...</div>}>
+            <FeedbackContent />
+          </Suspense>
         </main>
       </div>
     </div>
