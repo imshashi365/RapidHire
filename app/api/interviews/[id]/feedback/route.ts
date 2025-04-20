@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { connectToDatabase } from "@/lib/mongodb";
+import { connectToDatabase } from "@/lib/db";
 import { ObjectId } from "mongodb";
 
 export async function POST(
@@ -92,28 +92,44 @@ export async function GET(
     // Check authentication
     const session = await getServerSession(authOptions);
     if (!session?.user) {
+      console.log("Unauthorized access attempt");
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const resolvedParams = await params;
     const interviewId = resolvedParams.id;
+    console.log("Fetching feedback for interview ID:", interviewId);
     
     if (!interviewId) {
+      console.log("Missing interview ID");
       return NextResponse.json(
         { error: "Missing interview ID" },
         { status: 400 }
       );
     }
 
+    // Validate ObjectId
+    if (!ObjectId.isValid(interviewId)) {
+      console.log("Invalid interview ID format:", interviewId);
+      return NextResponse.json(
+        { error: "Invalid interview ID format" },
+        { status: 400 }
+      );
+    }
+
     // Connect to database
+    console.log("Connecting to database...");
     const { db } = await connectToDatabase();
+    console.log("Connected to database");
 
     // Find the interview and get its feedback
+    console.log("Finding interview...");
     const interview = await db.collection("interviews").findOne(
       { _id: new ObjectId(interviewId) }
     );
 
     if (!interview) {
+      console.log("Interview not found");
       return NextResponse.json(
         { error: "Interview not found" },
         { status: 404 }
@@ -121,14 +137,17 @@ export async function GET(
     }
 
     if (!interview.feedback) {
+      console.log("No feedback available for interview");
       return NextResponse.json(
         { error: "No feedback available" },
         { status: 404 }
       );
     }
 
+    console.log("Found interview with feedback:", interview.feedback);
+
     // Return the feedback in the expected structure
-    return NextResponse.json({
+    const response = {
       feedback: {
         rating: {
           technicalSkills: interview.feedback.rating.technicalSkills,
@@ -141,7 +160,10 @@ export async function GET(
         recommendationMsg: interview.feedback.recommendationMsg,
         overallScore: interview.feedback.overallScore || interview.score
       }
-    });
+    };
+
+    console.log("Returning feedback response:", response);
+    return NextResponse.json(response);
   } catch (error) {
     console.error("Error fetching feedback:", error);
     return NextResponse.json(

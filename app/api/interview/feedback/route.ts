@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { GoogleGenerativeAI } from '@google/generative-ai'
+import { connectToDatabase } from '@/lib/db'
+import { ObjectId } from 'mongodb'
 
 // Fallback feedback in case API fails
 const fallbackFeedback = {
@@ -108,8 +110,8 @@ export async function POST(request: Request) {
 
       const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
 
-      // Use Gemini 2.0 Flash for faster, structured responses
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+      // Use Gemini 2.5 Pro for structured responses
+      const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro-exp-03-25" });
 
       const prompt = `You are an AI expert at evaluating job interviews with a very strict evaluation criteria. Your goal is to filter out approximately 99% of candidates by maintaining extremely high standards. Analyze this interview conversation between an AI interviewer and a candidate for ${position?.title || 'a job role'}.
 
@@ -159,8 +161,8 @@ Interview Conversation:
 ${conversation}`
 
       // Generate content with Gemini
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
+      const geminiResult = await model.generateContent(prompt);
+      const response = await geminiResult.response;
       const feedbackText = response.text();
       
       let feedbackData: FeedbackResponse
@@ -237,8 +239,43 @@ ${conversation}`
         throw new Error(`Invalid feedback structure: ${validationErrors.join(', ')}`)
       }
 
-      // Return the feedback
-      return NextResponse.json(feedbackData)
+      // Calculate overall score
+      const overallScore = calculateWeightedAverageScore(rating)
+      
+      // Add overall score to feedback
+      const feedbackWithScore = {
+        ...feedbackData,
+        feedback: {
+          ...feedbackData.feedback,
+          overallScore
+        }
+      }
+
+      // Save feedback to database
+      console.log('Saving feedback to database for interview:', interviewId)
+      const { db } = await connectToDatabase()
+      
+      // Update the interview with feedback
+      const updateResult = await db.collection("interviews").updateOne(
+        { _id: new ObjectId(interviewId) },
+        {
+          $set: {
+            status: "completed",
+            feedback: feedbackWithScore.feedback,
+            score: overallScore,
+            completedAt: new Date(),
+            updatedAt: new Date()
+          }
+        }
+      )
+
+      if (updateResult.matchedCount === 0) {
+        console.error('Interview not found:', interviewId)
+        return NextResponse.json({ error: 'Interview not found' }, { status: 404 })
+      }
+
+      console.log('Feedback saved successfully')
+      return NextResponse.json(feedbackWithScore)
     } catch (apiError: unknown) {
       const error = apiError as ApiError;
       console.error("Gemini API error:", {

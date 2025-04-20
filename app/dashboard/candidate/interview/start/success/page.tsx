@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { CandidateDashboardHeader } from '@/components/candidate-dashboard-header'
 import { CandidateDashboardSidebar } from '@/components/candidate-dashboard-sidebar'
 import { toast } from 'sonner'
+import { Loader2 } from 'lucide-react'
 
 interface InterviewFeedback {
   feedback: {
@@ -29,66 +30,127 @@ function FeedbackContent() {
   const [feedback, setFeedback] = useState<InterviewFeedback | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [interviewDate, setInterviewDate] = useState<string | null>(null)
+  const [pollingCount, setPollingCount] = useState(0)
+  const [isPolling, setIsPolling] = useState(false)
 
-  useEffect(() => {
-    const fetchFeedback = async () => {
-      if (!interviewId) {
-        setError('No interview ID provided')
-        setLoading(false)
-        return
-      }
-
-      try {
-        // Fetch feedback data
-        const response = await fetch(`/api/interviews/${interviewId}/feedback`)
-        
-        if (response.status === 401) {
-          throw new Error('Please log in to view feedback')
-        }
-        
-        if (response.status === 404) {
-          throw new Error('Interview feedback not found')
-        }
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch feedback')
-        }
-        
-        const data = await response.json()
-        setFeedback(data)
-        
-        // Fetch interview details for date
-        const interviewResponse = await fetch(`/api/interviews/${interviewId}`)
-        if (interviewResponse.ok) {
-          const interviewData = await interviewResponse.json()
-          console.log('Interview data:', interviewData)
-          // Set the interview date from the response
-          if (interviewData.completedAt) {
-            console.log('Using completedAt:', interviewData.completedAt)
-            setInterviewDate(interviewData.completedAt)
-          } else if (interviewData.date) {
-            console.log('Using date:', interviewData.date)
-            setInterviewDate(interviewData.date)
-          } else if (interviewData.createdAt) {
-            console.log('Using createdAt:', interviewData.createdAt)
-            setInterviewDate(interviewData.createdAt)
-          } else {
-            console.log('No date found in interview data')
-          }
-        } else {
-          console.error('Failed to fetch interview details:', interviewResponse.status)
-        }
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'Failed to load feedback'
-        setError(errorMessage)
-        toast.error(errorMessage)
-      } finally {
-        setLoading(false)
-      }
+  // Function to fetch feedback
+  const fetchFeedback = async (isPolling = false) => {
+    if (!interviewId) {
+      setError('No interview ID provided')
+      setLoading(false)
+      return
     }
 
+    try {
+      console.log('Fetching feedback for interview ID:', interviewId)
+      
+      // First check if the interview exists
+      const interviewCheckResponse = await fetch(`/api/interviews/${interviewId}`)
+      console.log('Interview check response status:', interviewCheckResponse.status)
+      
+      if (!interviewCheckResponse.ok) {
+        const errorData = await interviewCheckResponse.json().catch(() => ({}))
+        console.error('Interview check error:', errorData)
+        throw new Error(errorData.error || 'Failed to fetch interview')
+      }
+      
+      const interviewData = await interviewCheckResponse.json()
+      console.log('Interview data:', interviewData)
+      
+      // Check if the interview has feedback
+      if (!interviewData.feedback) {
+        console.log('Interview exists but has no feedback yet')
+        
+        // If we're polling and haven't reached max attempts, continue polling
+        if (isPolling && pollingCount < 10) {
+          setPollingCount(prev => prev + 1)
+          return
+        }
+        
+        // If we've reached max polling attempts, show the message
+        if (pollingCount >= 10) {
+          setError('Interview feedback is still being generated. Please check back later.')
+          setLoading(false)
+          return
+        }
+        
+        // If this is the first attempt, start polling
+        if (!isPolling) {
+          setIsPolling(true)
+          setPollingCount(1)
+          return
+        }
+      }
+      
+      // If we have feedback, set the date
+      if (interviewData.completedAt) {
+        console.log('Using completedAt:', interviewData.completedAt)
+        setInterviewDate(interviewData.completedAt)
+      } else if (interviewData.date) {
+        console.log('Using date:', interviewData.date)
+        setInterviewDate(interviewData.date)
+      } else if (interviewData.createdAt) {
+        console.log('Using createdAt:', interviewData.createdAt)
+        setInterviewDate(interviewData.createdAt)
+      } else {
+        console.log('No date found in interview data')
+      }
+      
+      // Now fetch the feedback
+      const response = await fetch(`/api/interviews/${interviewId}/feedback`)
+      console.log('Feedback response status:', response.status)
+      
+      if (response.status === 401) {
+        throw new Error('Please log in to view feedback')
+      }
+      
+      if (response.status === 404) {
+        throw new Error('Interview feedback not found')
+      }
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        console.error('Error response:', errorData)
+        throw new Error(errorData.error || 'Failed to fetch feedback')
+      }
+      
+      const data = await response.json()
+      console.log('Feedback data:', data)
+      setFeedback(data)
+      setLoading(false)
+      setIsPolling(false)
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load feedback'
+      console.error('Error in fetchFeedback:', err)
+      setError(errorMessage)
+      toast.error(errorMessage)
+      setLoading(false)
+      setIsPolling(false)
+    }
+  }
+
+  // Initial fetch
+  useEffect(() => {
     fetchFeedback()
   }, [interviewId])
+
+  // Polling effect
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout | null = null
+    
+    if (isPolling) {
+      // Poll every 3 seconds
+      intervalId = setInterval(() => {
+        fetchFeedback(true)
+      }, 3000)
+    }
+    
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId)
+      }
+    }
+  }, [isPolling, interviewId])
 
   // Format date function similar to the interviews page
   const formatDate = (dateString: string | null | undefined) => {
@@ -135,11 +197,35 @@ function FeedbackContent() {
 
   const renderFeedback = () => {
     if (loading) {
-      return <div className="text-center text-gray-300">Loading feedback...</div>
+      return (
+        <div className="flex flex-col items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+          <div className="text-center text-gray-300">
+            {isPolling 
+              ? `Generating feedback...` 
+              : "Generating feedback..."}
+          </div>
+        </div>
+      )
     }
 
     if (error) {
-      return <div className="text-center text-gray-300">{error}</div>
+      return (
+        <div className="text-center py-8">
+          <div className="text-gray-300 mb-4">{error}</div>
+          <button 
+            onClick={() => {
+              setLoading(true)
+              setError(null)
+              setPollingCount(0)
+              fetchFeedback()
+            }}
+            className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      )
     }
 
     if (!feedback?.feedback) {
@@ -175,13 +261,11 @@ function FeedbackContent() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          
-          
           {ratingCategories.map((category) => (
             <div key={category.name} className="bg-white p-6 rounded-lg shadow-sm">
               <div className="flex justify-between items-center mb-2">
                 <h3 className="text-lg font-medium text-gray-900">{category.name}</h3>
-                {/* <span className="text-sm text-gray-500">Weight: {category.weight}</span> */}
+                <span className="text-sm text-gray-500">Weight: {category.weight}</span>
               </div>
               <div className="flex items-center">
                 <div className="flex-1 h-2 bg-gray-200 rounded-full mr-2">
@@ -189,7 +273,6 @@ function FeedbackContent() {
                     className={`h-2 rounded-full ${category.color}`} 
                     style={{ width: `${category.value}%` }}
                   ></div>
-                  {/* <span className="text-sm text-gray-500">{category.value}</span> */}
                 </div>
                 <span className="text-lg font-semibold text-gray-500">{category.value}</span>
               </div>
