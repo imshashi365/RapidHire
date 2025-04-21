@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation'
 import { CandidateDashboardHeader } from '@/components/candidate-dashboard-header'
 import { CandidateDashboardSidebar } from '@/components/candidate-dashboard-sidebar'
 import { toast } from 'sonner'
-import { Loader2 } from 'lucide-react'
+import { Loader2, RefreshCw } from 'lucide-react'
 
 interface InterviewFeedback {
   feedback: {
@@ -32,6 +32,7 @@ function FeedbackContent() {
   const [interviewDate, setInterviewDate] = useState<string | null>(null)
   const [pollingCount, setPollingCount] = useState(0)
   const [isPolling, setIsPolling] = useState(false)
+  const [isRetrying, setIsRetrying] = useState(false)
 
   // Function to fetch feedback
   const fetchFeedback = async (isPolling = false) => {
@@ -106,6 +107,10 @@ function FeedbackContent() {
       
       if (response.status === 404) {
         throw new Error('Interview feedback not found')
+      }
+      
+      if (response.status === 504) {
+        throw new Error('The server took too long to respond. Please try again later.')
       }
       
       if (!response.ok) {
@@ -195,6 +200,45 @@ function FeedbackContent() {
     return Math.round(weightedSum);
   };
 
+  const handleRetry = async () => {
+    setIsRetrying(true)
+    setLoading(true)
+    setError(null)
+    setPollingCount(0)
+    
+    try {
+      // Try to generate feedback again
+      const response = await fetch('/api/interview/feedback', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          interviewId,
+          conversation: [] // We don't have the conversation here, but the API will use fallback
+        }),
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to regenerate feedback')
+      }
+      
+      // Wait a moment for the feedback to be saved
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      // Then fetch the feedback
+      await fetchFeedback()
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to regenerate feedback'
+      console.error('Error regenerating feedback:', err)
+      setError(errorMessage)
+      toast.error(errorMessage)
+      setLoading(false)
+    } finally {
+      setIsRetrying(false)
+    }
+  }
+
   const renderFeedback = () => {
     if (loading) {
       return (
@@ -202,8 +246,8 @@ function FeedbackContent() {
           <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
           <div className="text-center text-gray-300">
             {isPolling 
-              ? `Generating feedback...` 
-              : "Generating feedback..."}
+              ? `Loading feedback... (Attempt ${pollingCount}/10)` 
+              : "Loading feedback..."}
           </div>
         </div>
       )
@@ -213,17 +257,38 @@ function FeedbackContent() {
       return (
         <div className="text-center py-8">
           <div className="text-gray-300 mb-4">{error}</div>
-          <button 
-            onClick={() => {
-              setLoading(true)
-              setError(null)
-              setPollingCount(0)
-              fetchFeedback()
-            }}
-            className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors"
-          >
-            Retry
-          </button>
+          <div className="flex justify-center gap-4">
+            <button 
+              onClick={() => {
+                setLoading(true)
+                setError(null)
+                setPollingCount(0)
+                fetchFeedback()
+              }}
+              className="px-4 py-2 bg-primary text-white rounded-md hover:bg-primary/90 transition-colors"
+              disabled={isRetrying}
+            >
+              {isRetrying ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin inline mr-2" />
+                  Retrying...
+                </>
+              ) : (
+                'Retry'
+              )}
+            </button>
+            
+            {error.includes('too long to respond') && (
+              <button 
+                onClick={handleRetry}
+                className="px-4 py-2 bg-secondary text-white rounded-md hover:bg-secondary/90 transition-colors"
+                disabled={isRetrying}
+              >
+                <RefreshCw className="h-4 w-4 inline mr-2" />
+                Regenerate Feedback
+              </button>
+            )}
+          </div>
         </div>
       )
     }

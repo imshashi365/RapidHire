@@ -776,13 +776,13 @@ export default function HomePage() {
               <h4 className="text-lg font-semibold text-white">Contact</h4>
               <ul className="space-y-2">
                 <li>
-                  <Link href="mailto:contact@rapidhire.ai" className="text-gray-400 hover:text-[#229799] transition-colors">shashigdsc@gmail.com</Link>
+                  <Link href="mailto:contact@rapidhire.ai" className="text-gray-400 hover:text-[#229799] transition-colors">sales@mounttalent.com</Link>
                 </li>
                 <li>
-                  <Link href="tel:+1234567890" className="text-gray-400 hover:text-[#229799] transition-colors">+91-9219612129</Link>
+                  <Link href="tel:+1234567890" className="text-gray-400 hover:text-[#229799] transition-colors"></Link>
                 </li>
                 <li className="text-gray-400">
-                  MAIT Delhi, Rohini Sector-22, New Delhi
+                Head office: A-51 Sector 16, Noida, U.P. - 201301
                 </li>
               </ul>
             </div>
