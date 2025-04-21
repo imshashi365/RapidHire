@@ -110,7 +110,11 @@ export async function POST(request: Request) {
 
       const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
 
+<<<<<<< HEAD
       // Use Gemini Pro for structured responses
+=======
+      // Use Gemini 2.5 Pro for structured responses
+>>>>>>> 476ef400dfe5f1d05169b37ae5d91fc6645fe8f2
       const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
       const prompt = `You are an AI expert at evaluating job interviews with a very strict evaluation criteria. Your goal is to filter out approximately 99% of candidates by maintaining extremely high standards. Analyze this interview conversation between an AI interviewer and a candidate for ${position?.title || 'a job role'}.
