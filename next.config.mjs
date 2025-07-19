@@ -1,13 +1,13 @@
 let userConfig = undefined
 try {
-  // try to import ESM first
+
   userConfig = await import('./v0-user-next.config.mjs')
 } catch (e) {
   try {
-    // fallback to CJS import
+
     userConfig = await import("./v0-user-next.config");
   } catch (innerError) {
-    // ignore error
+
   }
 }
 
@@ -19,33 +19,40 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+
+  output: process.env.NODE_ENV === 'production' ? 'export' : undefined,
   images: {
-    unoptimized: true,
+    unoptimized: true, // Required for static exports
   },
   experimental: {
     webpackBuildWorker: true,
-    parallelServerBuildTraces: true,
     parallelServerCompiles: true,
+    parallelServerBuildTraces: true,
   },
-}
 
-if (userConfig) {
-  // ESM imports will have a "default" property
-  const config = userConfig.default || userConfig
+  exportPathMap: async function() {
+    return {
+      '/': { page: '/' },
+      '/login': { page: '/login' },
+      '/register': { page: '/register' },
 
-  for (const key in config) {
-    if (
-      typeof nextConfig[key] === 'object' &&
-      !Array.isArray(nextConfig[key])
-    ) {
-      nextConfig[key] = {
-        ...nextConfig[key],
-        ...config[key],
-      }
-    } else {
-      nextConfig[key] = config[key]
-    }
-  }
+    };
+  },
+  // Disable static optimization for API routes
+  api: {
+    bodyParser: {
+      sizeLimit: '1mb',
+    },
+    externalResolver: true,
+  },
+
+  reactStrictMode: true,
+  // Configure webpack
+  webpack: (config, { isServer }) => {
+
+    return config;
+  },
+  ...(userConfig?.default || {})
 }
 
 export default nextConfig

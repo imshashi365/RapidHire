@@ -9,9 +9,6 @@ import { CandidateDashboardHeader } from "@/components/candidate-dashboard-heade
 import { CandidateDashboardSidebar } from "@/components/candidate-dashboard-sidebar"
 import { useState } from "react"
 
-const[time,setTIme]=useState("");
-
-
 const mockInterviews = [
   {
     id: 1,
@@ -42,13 +39,6 @@ const mockInterviews = [
 export default function CandidateDashboard() {
   return (
     <div className="flex min-h-screen flex-col">
-
-
-      <div className="flex justify-around">
-        <div className="bg-red">Div 1</div>
-        <div className="bg-blue">Div 2</div>
-        <div className="bg-yellow-50">Div 3</div>
-      </div>
       <CandidateDashboardHeader />
 
       <div className="flex flex-1">
