@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { InterviewLinkCard } from "@/components/interview-link-card"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -92,7 +93,7 @@ export default function PositionsPage() {
 
       try {
         // Fetch positions
-        const positionsResponse = await fetch("/api/positions", {
+        const positionsResponse = await fetch(`/api/positions?company=${session.user.id}`, {
           method: "GET",
           credentials: "include",
           headers: {
@@ -106,7 +107,7 @@ export default function PositionsPage() {
         
         const positionsData = await positionsResponse.json()
         // Ensure positions is an array and has the expected structure
-        const positionsArray = Array.isArray(positionsData.positions) ? positionsData.positions : []
+        const positionsArray = Array.isArray(positionsData) ? positionsData : []
         console.log('Fetched positions:', positionsArray) // Debug log
         setPositions(positionsArray)
 
@@ -338,14 +339,15 @@ export default function PositionsPage() {
                 <Building2 className="h-12 w-12 text-gray-400 mb-4" />
                 <p className="text-xl font-medium text-gray-900 dark:text-gray-100 mb-2">No positions yet</p>
                 <p className="text-gray-500 dark:text-gray-400 mb-4">Create your first job position to start hiring.</p>
-                <Button onClick={handleCreatePosition}>
+                {/* <Button onClick={handleCreatePosition}>
                   <Plus className="mr-2 h-4 w-4" />
                   Add Position
-                </Button>
+                </Button> */}
               </CardContent>
             </Card>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              
               {positions.map((position) => (
                 position && (
                   <Card key={position._id} className="relative">
@@ -408,15 +410,18 @@ export default function PositionsPage() {
                     </CardContent>
                     <CardFooter className="text-sm text-gray-500 flex items-center justify-between">
                       <span>Posted {position.createdAt ? new Date(position.createdAt).toLocaleDateString() : 'Unknown date'}</span>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => router.push(`/positions/${position._id}`)}
-                        className="ml-2"
-                      >
-                        <Eye className="h-4 w-4 mr-2" />
-                        View
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        {/* <InterviewLinkCard positionId={position._id} positionTitle={position.title} /> */}
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => router.push(`/positions/${position._id}`)}
+                          className="ml-2"
+                        >
+                          <Eye className="h-4 w-4 mr-2" />
+                          View
+                        </Button>
+                      </div>
                     </CardFooter>
                   </Card>
                 )
@@ -438,4 +443,3 @@ export default function PositionsPage() {
     </div>
   )
 }
-

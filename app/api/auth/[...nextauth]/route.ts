@@ -6,10 +6,27 @@ import { compare } from "bcryptjs"
 import { JWT } from "next-auth/jwt"
 import { Session } from "next-auth"
 
-// This is a simplified auth setup - in a real app, you would:
-// 1. Properly validate credentials against a database
-// 2. Implement proper password hashing
-// 3. Add additional providers as needed
+// Extend the built-in session types
+declare module "next-auth" {
+  interface Session {
+    user: {
+      id: string
+      name: string
+      email: string
+      role: "company" | "candidate"
+      username?: string
+    }
+  }
+}
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    id: string
+    role: "company" | "candidate"
+    username?: string
+  }
+}
+
 
 export const authOptions: AuthOptions = {
   adapter: MongoDBAdapter(clientPromise) as any,
@@ -46,7 +63,8 @@ export const authOptions: AuthOptions = {
             id: user._id.toString(),
             name: user.name,
             email: user.email,
-            role: user.role,
+            role: user.role as "company" | "candidate",
+            username: user.username,
           }
         } catch (error) {
           console.error("Auth error:", error)
@@ -64,6 +82,7 @@ export const authOptions: AuthOptions = {
       if (user) {
         token.role = user.role
         token.id = user.id
+        token.username = user.username
       }
       return token
     },
@@ -71,7 +90,7 @@ export const authOptions: AuthOptions = {
       if (session.user) {
         session.user.role = token.role
         session.user.id = token.id
-        session.accessToken = token
+        session.user.username = token.username
       }
       return session
     },

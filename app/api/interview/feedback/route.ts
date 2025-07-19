@@ -36,6 +36,8 @@ interface FeedbackResponse {
     summary: string;
     recommendation: string;
     recommendationMsg: string;
+    strengths?: string[];
+    areasForImprovement?: string[];
   };
 }
 
@@ -51,78 +53,41 @@ interface RequestBody {
   interviewId: string;
   conversation: string;
   position?: Position;
+  candidateName?: string;
 }
 
-export async function POST(request: Request) {
+// Helper function to generate feedback using Gemini API
+async function generateFeedbackWithGemini(conversation: string | any, position?: Position) {
   try {
-    // Check authentication
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      console.error('Authentication failed: No valid session found')
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    // Format the conversation for the API
+    const conversationText = typeof conversation === 'string' ? conversation : JSON.stringify(conversation)
+
+    // Get position details
+    const positionTitle = position?.title || 'a job role'
+    const minExperience = position?.minExperience || 'Not specified'
+    const maxExperience = position?.maxExperience || 'Not specified'
+    const requirements = position?.requirements?.join(', ') || 'Not specified'
+    const questions = position?.questions?.join(', ') || 'Not specified'
+
+    // Initialize Gemini API
+    if (!process.env.GOOGLE_API_KEY) {
+      throw new Error('GOOGLE_API_KEY is not configured')
     }
 
-    // Parse and validate request body
-    let body: RequestBody
-    try {
-      body = await request.json()
-    } catch (error) {
-      console.error('Invalid JSON in request body:', error)
-      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
-    }
+    console.log('Using GOOGLE_API_KEY for Gemini API requests:', !!process.env.GOOGLE_API_KEY)
 
-    const { interviewId, conversation, position } = body
+    const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY)
 
-    // Validate required fields
-    if (!interviewId || typeof interviewId !== 'string') {
-      console.error('Invalid or missing interviewId:', interviewId)
-      return NextResponse.json({ error: 'Invalid or missing interviewId' }, { status: 400 })
-    }
+    // Use Gemini Flash for structured responses
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" })
 
-    if (!conversation || typeof conversation !== 'string') {
-      console.error('Invalid or missing conversation:', conversation)
-      return NextResponse.json({ error: 'Invalid or missing conversation' }, { status: 400 })
-    }
-
-    // Validate position object if provided
-    if (position) {
-      if (typeof position !== 'object') {
-        console.error('Invalid position format:', position)
-        return NextResponse.json({ error: 'Invalid position format' }, { status: 400 })
-      }
-
-      if (position.requirements && !Array.isArray(position.requirements)) {
-        console.error('Invalid requirements format:', position.requirements)
-        return NextResponse.json({ error: 'Invalid requirements format' }, { status: 400 })
-      }
-
-      if (position.questions && !Array.isArray(position.questions)) {
-        console.error('Invalid questions format:', position.questions)
-        return NextResponse.json({ error: 'Invalid questions format' }, { status: 400 })
-      }
-    }
-
-    try {
-      // Initialize Gemini API
-      if (!process.env.GOOGLE_API_KEY) {
-        throw new Error('GOOGLE_API_KEY is not configured')
-      }
-
-      const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
-
-<<<<<<< HEAD
-      // Use Gemini Pro for structured responses
-=======
-      // Use Gemini 2.5 Pro for structured responses
->>>>>>> 476ef400dfe5f1d05169b37ae5d91fc6645fe8f2
-      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
-      const prompt = `You are an AI expert at evaluating job interviews with a very strict evaluation criteria. Your goal is to filter out approximately 99% of candidates by maintaining extremely high standards. Analyze this interview conversation between an AI interviewer and a candidate for ${position?.title || 'a job role'}.
+    // Prepare the prompt with stricter evaluation criteria
+    const prompt = `You are an AI expert at evaluating job interviews with a very strict evaluation criteria. Your goal is to filter out approximately 99% of candidates by maintaining extremely high standards. Analyze this interview conversation between an AI interviewer and a candidate for ${positionTitle}.
 
 Position Details:
-- Experience Required: ${position?.minExperience || 'Not specified'} to ${position?.maxExperience || 'Not specified'} years
-- Required Skills: ${position?.requirements?.join(', ') || 'Not specified'}
-- Key Questions: ${position?.questions?.join(', ') || 'Not specified'}
+- Experience Required: ${minExperience} to ${maxExperience} years
+- Required Skills: ${requirements}
+- Key Questions: ${questions}
 
 Evaluation Criteria:
 1. Interview Completion & Response Quality:
@@ -162,147 +127,201 @@ IMPORTANT: Respond ONLY with a valid JSON object in this exact format, no additi
 }
 
 Interview Conversation:
-${conversation}`
+${conversationText}`
 
-      // Generate content with Gemini
-      const geminiResult = await model.generateContent(prompt);
-      const response = await geminiResult.response;
-      const feedbackText = response.text();
+    console.log('Making Gemini API request with SDK:', {
+      model: 'gemini-pro',
+      promptLength: prompt.length,
+    })
+
+    // Generate content with Gemini
+    const geminiResult = await model.generateContent(prompt)
+    const response = await geminiResult.response
+    const feedbackText = response.text()
+    
+    let feedback: any
+    try {
+      // Clean up the response text before parsing
+      const cleanedText = feedbackText
+        .replace(/\n/g, ' ')
+        .replace(/\t/g, ' ')
+        .replace(/\\"/g, '"')
+        .replace(/```json/g, '')
+        .replace(/```/g, '')
+        .trim()
       
-      let feedbackData: FeedbackResponse
-      try {
-        // Clean up the response text before parsing
-        const cleanedText = feedbackText
+      // Try to find a valid JSON object in the response
+      const jsonMatch = cleanedText.match(/\{[\s\S]*\}/)
+      if (!jsonMatch) {
+        throw new Error('No valid JSON object found in response')
+      }
+      
+      feedback = JSON.parse(jsonMatch[0])
+    } catch (parseError: unknown) {
+      const error = parseError as Error
+      console.error("JSON Parse Error:", {
+        error: error.message,
+        stack: error.stack,
+        rawResponse: feedbackText,
+        cleanedText: feedbackText
           .replace(/\n/g, ' ')
           .replace(/\t/g, ' ')
           .replace(/\\"/g, '"')
           .replace(/```json/g, '')
           .replace(/```/g, '')
-          .trim();
-        
-        // Try to find a valid JSON object in the response
-        const jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) {
-          throw new Error('No valid JSON object found in response');
-        }
-        
-        feedbackData = JSON.parse(jsonMatch[0]) as FeedbackResponse;
-      } catch (parseError: unknown) {
-        const error = parseError as Error;
-        console.error("JSON Parse Error:", {
-          error: error.message,
-          stack: error.stack,
-          rawResponse: feedbackText,
-          cleanedText: feedbackText
-            .replace(/\n/g, ' ')
-            .replace(/\t/g, ' ')
-            .replace(/\\"/g, '"')
-            .replace(/```json/g, '')
-            .replace(/```/g, '')
-            .trim()
-        })
-        throw new Error(`Failed to parse feedback JSON: ${error.message}`)
-      }
+          .trim()
+      })
+      throw new Error(`Failed to parse feedback JSON: ${error.message}`)
+    }
 
-      // Validate the feedback structure
-      if (!feedbackData?.feedback?.rating) {
-        console.error("Invalid feedback structure - missing rating:", feedbackData)
-        throw new Error("Invalid feedback structure: missing rating object")
-      }
+    // Validate the feedback structure
+    if (!feedback?.feedback?.rating) {
+      console.error("Invalid feedback structure - missing rating:", feedback)
+      throw new Error("Invalid feedback structure: missing rating object")
+    }
 
-      const { rating } = feedbackData.feedback
-      const validationErrors = []
+    return feedback
+  } catch (error: unknown) {
+    console.error("Error in generateFeedbackWithGemini:", error)
+    // Return fallback feedback if API fails
+    return fallbackFeedback
+  }
+}
 
-      if (typeof rating.technicalSkills !== 'number' || rating.technicalSkills < 0 || rating.technicalSkills > 100) {
-        validationErrors.push(`Invalid technicalSkills rating: ${rating.technicalSkills}`)
-      }
-      if (typeof rating.communication !== 'number' || rating.communication < 0 || rating.communication > 100) {
-        validationErrors.push(`Invalid communication rating: ${rating.communication}`)
-      }
-      if (typeof rating.problemSolving !== 'number' || rating.problemSolving < 0 || rating.problemSolving > 100) {
-        validationErrors.push(`Invalid problemSolving rating: ${rating.problemSolving}`)
-      }
-      if (typeof rating.experience !== 'number' || rating.experience < 0 || rating.experience > 100) {
-        validationErrors.push(`Invalid experience rating: ${rating.experience}`)
-      }
-      if (!feedbackData.feedback.summary) {
-        validationErrors.push("Missing summary")
-      }
-      if (!feedbackData.feedback.recommendation) {
-        validationErrors.push("Missing recommendation")
-      }
-      if (!feedbackData.feedback.recommendationMsg) {
-        validationErrors.push("Missing recommendationMsg")
-      }
+export async function POST(request: Request) {
+  try {
+    // Check authentication
+    const session = await getServerSession(authOptions)
+    if (!session?.user) {
+      console.error('Authentication failed: No valid session found')
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
-      if (validationErrors.length > 0) {
-        console.error("Feedback validation errors:", {
-          errors: validationErrors,
-          feedback: feedbackData
-        })
-        throw new Error(`Invalid feedback structure: ${validationErrors.join(', ')}`)
-      }
+    // Parse and validate request body
+    let body: RequestBody
+    try {
+      body = await request.json()
+    } catch (error) {
+      console.error('Invalid JSON in request body:', error)
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+    }
 
-      // Calculate overall score
-      const overallScore = calculateWeightedAverageScore(rating)
-      
-      // Add overall score to feedback
-      const feedbackWithScore = {
-        ...feedbackData,
-        feedback: {
-          ...feedbackData.feedback,
-          overallScore
-        }
-      }
+    const { interviewId, conversation, position, candidateName } = body
 
-      // Save feedback to database
-      console.log('Saving feedback to database for interview:', interviewId)
-      const { db } = await connectToDatabase()
-      
-      // Update the interview with feedback
-      const updateResult = await db.collection("interviews").updateOne(
+    // Validate required fields
+    if (!interviewId || typeof interviewId !== 'string') {
+      console.error('Invalid or missing interviewId:', interviewId)
+      return NextResponse.json({ error: 'Invalid or missing interviewId' }, { status: 400 })
+    }
+
+    if (!conversation || typeof conversation !== 'string') {
+      console.error('Invalid or missing conversation:', conversation)
+      return NextResponse.json({ error: 'Invalid or missing conversation' }, { status: 400 })
+    }
+
+    // Connect to database
+    const { db } = await connectToDatabase()
+
+    // Validate ObjectId format
+    if (!ObjectId.isValid(interviewId)) {
+      return NextResponse.json({ error: 'Invalid interview ID format' }, { status: 400 })
+    }
+
+    // Check if the interview exists first
+    const existingInterview = await db.collection('interviews').findOne({ _id: new ObjectId(interviewId) })
+    
+    // If interview doesn't exist, create it
+    if (!existingInterview) {
+      console.log('Interview not found, creating a new record')
+      await db.collection('interviews').insertOne({
+        _id: new ObjectId(interviewId),
+        conversation,
+        candidateName: candidateName || session.user.name || 'Anonymous Candidate',
+        createdAt: new Date(), //here also same mistake in date formatting
+        completedAt: new Date(),  //mistake in dare formatting
+        status: 'completed',
+        userId: session.user.id
+      })
+    } else {
+      // Update the existing interview
+      await db.collection('interviews').updateOne(
         { _id: new ObjectId(interviewId) },
         {
           $set: {
-            status: "completed",
-            feedback: feedbackWithScore.feedback,
-            score: overallScore,
+            conversation,
+            candidateName: candidateName || session.user.name || 'Anonymous Candidate',
             completedAt: new Date(),
+            status: 'completed',
             updatedAt: new Date()
           }
         }
       )
+    }
 
-      if (updateResult.matchedCount === 0) {
-        console.error('Interview not found:', interviewId)
-        return NextResponse.json({ error: 'Interview not found' }, { status: 404 })
+    console.log('Conversation stored successfully')
+
+    try {
+      // Process the feedback from Gemini API
+      const feedback = await generateFeedbackWithGemini(conversation, position)
+      
+      // Convert ratings from 1-10 scale to 0-100 scale if needed
+      if (feedback && feedback.feedback && feedback.feedback.rating) {
+        const rating = feedback.feedback.rating
+        if (rating.technicalSkills && rating.technicalSkills <= 10) {
+          rating.technicalSkills = rating.technicalSkills * 10
+        }
+        if (rating.communication && rating.communication <= 10) {
+          rating.communication = rating.communication * 10
+        }
+        if (rating.problemSolving && rating.problemSolving <= 10) {
+          rating.problemSolving = rating.problemSolving * 10
+        }
+        if (rating.experience && rating.experience <= 10) {
+          rating.experience = rating.experience * 10
+        }
       }
 
-      console.log('Feedback saved successfully')
-      return NextResponse.json(feedbackWithScore)
-    } catch (apiError: unknown) {
-      const error = apiError as ApiError;
-      console.error("Gemini API error:", {
-        error: error.message,
-        stack: error.stack,
-        name: error.name,
-        code: error.code,
-        details: error.details
+      // Calculate overall score
+      let overallScore = 0
+      if (feedback && feedback.feedback && feedback.feedback.rating) {
+        overallScore = calculateWeightedAverageScore(feedback.feedback.rating)
+        feedback.feedback.overallScore = overallScore
+      }
+
+      // Store the feedback in the database
+      await db.collection('interviews').updateOne(
+        { _id: new ObjectId(interviewId) },
+        {
+          $set: {
+            feedback: feedback.feedback,
+            score: overallScore,
+            feedbackGeneratedAt: new Date()
+          }
+        }
+      )
+
+      return NextResponse.json({ 
+        success: true, 
+        message: 'Conversation stored and feedback generated successfully',
+        feedback: feedback.feedback 
       })
-      // Return fallback feedback if API fails
-      return NextResponse.json(fallbackFeedback)
+    } catch (feedbackError) {
+      console.error('Error generating feedback:', feedbackError)
+      
+      // Even if feedback generation fails, we've still stored the conversation
+      return NextResponse.json({ 
+        success: true, 
+        message: 'Conversation stored successfully, but feedback generation failed',
+        error: feedbackError instanceof Error ? feedbackError.message : 'Unknown error',
+        feedback: fallbackFeedback.feedback
+      })
     }
-  } catch (error: unknown) {
-    const err = error as ApiError;
-    console.error("Error generating feedback:", {
-      error: err.message,
-      stack: err.stack,
-      name: err.name,
-      code: err.code,
-      details: err.details
-    })
-    // Return fallback feedback in case of any other errors
-    return NextResponse.json(fallbackFeedback)
+  } catch (error) {
+    console.error('Error processing interview feedback:', error)
+    return NextResponse.json({ 
+      error: 'Failed to process interview feedback',
+      details: error instanceof Error ? error.message : 'Unknown error' 
+    }, { status: 500 })
   }
 }
 
@@ -314,7 +333,7 @@ function calculateWeightedAverageScore(ratings: {
   experience: number;
 }) {
   const weights = {
-    technicalSkills: 0.80, // 80% weight
+    technicalSkills: 0.80, // 80% weight  // 70% not 80 %
     communication: 0.05,    // 5% weight
     problemSolving: 0.10,  // 10% weight
     experience: 0.05       // 5% weight

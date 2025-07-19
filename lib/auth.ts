@@ -1,11 +1,11 @@
 import { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
-import { MongoDBAdapter } from "@auth/mongodb-adapter"
+import { MongoDBAdapter } from "@next-auth/mongodb-adapter"
 import clientPromise from "@/lib/mongodb"
 import { compare } from "bcryptjs"
 
 export const authOptions: NextAuthOptions = {
-  adapter: MongoDBAdapter(clientPromise),
+  adapter: MongoDBAdapter(clientPromise) as any,
   session: {
     strategy: "jwt",
   },
@@ -42,7 +42,8 @@ export const authOptions: NextAuthOptions = {
           id: user._id.toString(),
           email: user.email,
           name: user.name,
-          role: user.role,
+          role: user.role as "candidate" | "company",
+          username: user.username
         }
       },
     }),
@@ -50,17 +51,19 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.role = user.role
+        token.role = user.role as "candidate" | "company"
         token.id = user.id
+        token.username = user.username
       }
       return token
     },
     async session({ session, token }) {
       if (session.user) {
-        session.user.role = token.role
+        session.user.role = token.role as "candidate" | "company"
         session.user.id = token.id
+        session.user.username = token.username
       }
       return session
     },
   },
-} 
+}

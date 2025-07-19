@@ -91,6 +91,18 @@ export function PositionModal({
     lastDate: position?.lastDate || new Date().toISOString().slice(0, 16)
   })
 
+  const [newQuestion, setNewQuestion] = useState("");
+
+  const handleAddQuestion = () => {
+    if (newQuestion.trim()) {
+      setFormData({
+        ...formData,
+        questions: formData.questions + "\n" + newQuestion.trim(),
+      });
+      setNewQuestion("");
+    }
+  }
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login")
@@ -184,7 +196,7 @@ export function PositionModal({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="companyName">Company Name</Label>
+                <Label htmlFor="companyName">Company/Client Name</Label>
                 <Input
                   id="companyName"
                   value={formData.companyName}
@@ -195,7 +207,7 @@ export function PositionModal({
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="title">Title</Label>
+                <Label htmlFor="title">Position Title</Label>
                 <Input
                   id="title"
                   value={formData.title}
@@ -285,7 +297,7 @@ export function PositionModal({
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="salaryMin">Minimum Salary (₹K)</Label>
+                <Label htmlFor="salaryMin">Min CTC(Lakhs ₹)</Label>
                 <Input
                   id="salaryMin"
                   type="number"
@@ -299,7 +311,7 @@ export function PositionModal({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="salaryMax">Maximum Salary (₹K)</Label>
+                <Label htmlFor="salaryMax">Max CTC(Lakhs ₹)</Label>
                 <Input
                   id="salaryMax"
                   type="number"
@@ -314,7 +326,7 @@ export function PositionModal({
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="description">Job Description</Label>
+              <Label htmlFor="description">Job Description/Qualification/Responsibilities</Label>
               <Textarea
                 id="description"
                 value={formData.description}
@@ -339,6 +351,14 @@ export function PositionModal({
                 onChange={(e) => setFormData({ ...formData, questions: e.target.value })}
                 required
               />
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="Add a new question"
+                  value={newQuestion}
+                  onChange={(e) => setNewQuestion(e.target.value)}
+                />
+                <Button type="button" onClick={handleAddQuestion}>Add Question</Button>
+              </div>
             </div>
             <div className="flex items-center justify-between space-x-2">
               <Label htmlFor="active" className="flex flex-col space-y-1">
@@ -366,4 +386,4 @@ export function PositionModal({
       </DialogContent>
     </Dialog>
   )
-} 
+}

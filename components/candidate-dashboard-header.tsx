@@ -13,9 +13,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { ChevronDown, LogOut, Settings } from "lucide-react"
 import { useSession, signOut } from "next-auth/react"
 import { useRouter } from "next/navigation"
+import { ThemeToggle } from "@/components/theme-toggle"
+import Link from "next/link"
+import Image from "next/image"
+import { Menu } from "lucide-react"
 
 export function CandidateDashboardHeader() {
-  const { data: session, status } = useSession()
+  const { data: session, status } = useSession();
   const router = useRouter()
 
   // Handle logout
@@ -81,6 +85,7 @@ export function CandidateDashboardHeader() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        <ThemeToggle />
       </div>
     </header>
   )

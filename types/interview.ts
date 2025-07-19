@@ -15,7 +15,7 @@ export interface Position {
   experience?: string
 }
 
-export type InterviewStatus = "pending" | "scheduled" | "in-progress" | "completed" | "cancelled"
+export type InterviewStatus = "pending" | "scheduled" | "in-progress" | "completed" | "cancelled" | "shortlisted" | "rejected"
 
 export interface Interview {
   _id: string
@@ -43,4 +43,4 @@ export interface Interview {
   position: Position | string
   createdAt: Date
   updatedAt: Date
-} 
+}

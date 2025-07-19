@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useParams } from "next/navigation"
+import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
@@ -36,6 +37,7 @@ const interviewData = {
 
 export default function InterviewPage({ params }: { params: { id: string } }) {
   const router = useRouter()
+  const { id } = useParams()
   const [isLoading, setIsLoading] = useState(true)
   const [isStarted, setIsStarted] = useState(false)
   const [isPreparing, setIsPreparing] = useState(true)
@@ -49,6 +51,29 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
   const [inputValue, setInputValue] = useState("")
   const videoRef = useRef<HTMLVideoElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  const saveInterviewToDB = async (conversation: Array<{ role: string; content: string }>) => {
+    try {
+      const response = await fetch(`/api/interview/public/${id}/save`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          conversation,
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to save interview")
+      }
+
+      toast.success("Interview saved successfully")
+    } catch (error) {
+      console.error("Error saving interview:", error)
+      toast.error("Failed to save interview")
+    }
+  }
 
   // Simulate loading interview data
   useEffect(() => {
@@ -178,8 +203,8 @@ export default function InterviewPage({ params }: { params: { id: string } }) {
   }
 
   const handleEndInterview = () => {
-    // Navigate to success page with interviewId as query parameter
-    router.push(`/dashboard/candidate/interview/start/success?interviewId=${params.id}`)
+    saveInterviewToDB(messages)
+    router.push(`/dashboard/candidate/interview/start/success?interviewId=${id}`)
   }
 
   if (isLoading) {

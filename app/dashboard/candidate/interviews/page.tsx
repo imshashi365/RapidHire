@@ -24,6 +24,21 @@ import { toast } from "sonner"
 import { Interview, InterviewStatus } from "@/types/interview"
 import { format } from "date-fns"
 
+// Helper function to safely access Position properties
+const getPositionField = (position: string | Position | undefined, field: keyof Position, fallback: string) => {
+  if (!position || typeof position === 'string') return fallback
+  return position[field]?.toString() || fallback
+}
+
+// Update type definitions to match the server response
+interface Position {
+  _id: string
+  title: string
+  department?: string
+  companyName?: string
+  requirements: string[]
+}
+
 // Update the Badge variants to use valid values
 const getBadgeVariant = (status: string) => {
   switch (status) {
@@ -115,8 +130,8 @@ export default function InterviewsPage() {
   const filteredInterviews = interviews.filter(interview => {
     const searchLower = searchQuery.toLowerCase()
     return (
-      interview.position?.title?.toLowerCase().includes(searchLower) ||
-      interview.position?.companyName?.toLowerCase().includes(searchLower) ||
+      getPositionField(interview.position, 'title', '').toLowerCase().includes(searchLower) ||
+      getPositionField(interview.position, 'companyName', '').toLowerCase().includes(searchLower) ||
       interview.status?.toLowerCase().includes(searchLower)
     )
   })
@@ -144,12 +159,12 @@ export default function InterviewsPage() {
     setIsViewDetailsOpen(true)
   }
 
-  const formatDate = (dateString: string | null | undefined) => {
-    if (!dateString) return "Not scheduled"
+  const formatDate = (date: Date | string | null | undefined) => {
+    if (!date) return "Not scheduled"
     try {
-      const date = new Date(dateString)
-      if (isNaN(date.getTime())) return "Not scheduled"
-      return date.toLocaleDateString("en-US", {
+      const dateObj = typeof date === 'string' ? new Date(date) : date
+      if (isNaN(dateObj.getTime())) return "Not scheduled"
+      return dateObj.toLocaleDateString("en-US", {
         year: "numeric",
         month: "long",
         day: "numeric"
@@ -160,12 +175,12 @@ export default function InterviewsPage() {
     }
   }
 
-  const formatTime = (dateString: string | null | undefined) => {
-    if (!dateString) return "Not scheduled"
+  const formatTime = (date: Date | string | null | undefined) => {
+    if (!date) return "Not scheduled"
     try {
-      const date = new Date(dateString)
-      if (isNaN(date.getTime())) return "Not scheduled"
-      return date.toLocaleTimeString("en-US", {
+      const dateObj = typeof date === 'string' ? new Date(date) : date
+      if (isNaN(dateObj.getTime())) return "Not scheduled"
+      return dateObj.toLocaleTimeString("en-US", {
         hour: "2-digit",
         minute: "2-digit",
         hour12: true
@@ -254,14 +269,14 @@ export default function InterviewsPage() {
             <TabsContent value="scheduled" className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {scheduledInterviews.map((interview) => (
-                  <Card key={interview.id} className="mb-4">
+                  <Card key={interview._id} className="mb-4">
                     <CardHeader>
                       <div className="flex justify-between items-start">
                         <div>
-                          <CardTitle>{interview.position?.title || "Untitled Position"}</CardTitle>
-                          <CardDescription>{interview.position?.department || "No Department"}</CardDescription>
+                          <CardTitle>{getPositionField(interview.position, 'title', 'Untitled Position')}</CardTitle>
+                          <CardDescription>{getPositionField(interview.position, 'department', 'No Department')}</CardDescription>
                           <div className="mt-2 text-sm text-gray-500">
-                            Company: {interview.position?.companyName || "No Company"}
+                            Company: {getPositionField(interview.position, 'companyName', 'No Company')}
                           </div>
                           <div className="mt-1 text-sm text-gray-500">
                             Last Date to Complete: {formatDate(interview.lastDate)}
@@ -322,7 +337,7 @@ export default function InterviewsPage() {
             <TabsContent value="completed" className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {completedInterviews.map((interview) => (
-                  <Card key={interview.id} className="overflow-hidden">
+                  <Card key={interview._id} className="overflow-hidden">
                     <CardContent className="p-0">
                       <div className="relative">
                         <div className="bg-slate-100 h-32 flex items-center justify-center">
@@ -339,8 +354,8 @@ export default function InterviewsPage() {
 
                       <div className="p-4">
                         <div className="mb-3">
-                          <h3 className="font-medium">{interview.position?.title || "Untitled Position"}</h3>
-                          <p className="text-sm text-gray-500">{interview.position?.companyName || "No Company"}</p>
+                          <h3 className="font-medium">{getPositionField(interview.position, 'title', 'Untitled Position')}</h3>
+                          <p className="text-sm text-gray-500">{getPositionField(interview.position, 'companyName', 'No Company')}</p>
                         </div>
 
                         <div className="flex items-center justify-between mb-2">
@@ -389,14 +404,14 @@ export default function InterviewsPage() {
             <TabsContent value="cancelled" className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {cancelledInterviews.map((interview) => (
-                  <Card key={interview.id} className="mb-4">
+                  <Card key={interview._id} className="mb-4">
                     <CardHeader>
                       <div className="flex justify-between items-start">
                         <div>
-                          <CardTitle>{interview.position?.title || "Untitled Position"}</CardTitle>
-                          <CardDescription>{interview.position?.department || "No Department"}</CardDescription>
+                          <CardTitle>{getPositionField(interview.position, 'title', 'Untitled Position')}</CardTitle>
+                          <CardDescription>{getPositionField(interview.position, 'department', 'No Department')}</CardDescription>
                           <div className="mt-2 text-sm text-gray-500">
-                            Company: {interview.position?.companyName || "No Company"}
+                            Company: {getPositionField(interview.position, 'companyName', 'No Company')}
                           </div>
                         </div>
                         <Badge variant="destructive">Cancelled</Badge>
@@ -448,9 +463,9 @@ export default function InterviewsPage() {
                     </thead>
                     <tbody>
                       {filteredInterviews.map((interview) => (
-                        <tr key={interview.id} className="border-b">
-                          <td className="p-4 font-medium">{interview.position?.title || "Untitled Position"}</td>
-                          <td className="p-4">{interview.position?.companyName || "No Company"}</td>
+                        <tr key={interview._id} className="border-b">
+                          <td className="p-4 font-medium">{getPositionField(interview.position, 'title', 'Untitled Position')}</td>
+                          <td className="p-4">{getPositionField(interview.position, 'companyName', 'No Company')}</td>
                           <td className="p-4">
                             <Badge variant={getBadgeVariant(interview.status)}>
                               {interview.status.charAt(0).toUpperCase() + interview.status.slice(1)}
@@ -485,7 +500,7 @@ export default function InterviewsPage() {
               <DialogHeader>
                 <DialogTitle>Interview Details</DialogTitle>
                 <DialogDescription>
-                  {selectedInterview.position.title} at {selectedInterview.position.companyName}
+                  {getPositionField(selectedInterview.position, 'title', 'Untitled Position')} at {getPositionField(selectedInterview.position, 'companyName', 'No Company')}
                 </DialogDescription>
               </DialogHeader>
               <div className="py-4">
@@ -560,8 +575,8 @@ export default function InterviewsPage() {
                   <div className="space-y-4">
                     <div className="rounded-lg border p-4 bg-amber-50 text-amber-800">
                       <p>
-                        You've been invited to an interview for {selectedInterview.position.title} at{" "}
-                        {selectedInterview.position.companyName}.
+                        You've been invited to an interview for {getPositionField(selectedInterview.position, 'title', 'Untitled Position')} at{" "}
+                        {getPositionField(selectedInterview.position, 'companyName', 'No Company')}.
                       </p>
                     </div>
                     <div className="space-y-2">
@@ -584,7 +599,7 @@ export default function InterviewsPage() {
                 {selectedInterview.status === "pending" && (
                   <Button onClick={() => {
                     setIsViewDetailsOpen(false)
-                    router.push(`/dashboard/candidate/interviews/${selectedInterview.id}`)
+                    router.push(`/dashboard/candidate/interviews/${selectedInterview._id}`)
                   }}>
                     Start Interview
                   </Button>
@@ -592,7 +607,7 @@ export default function InterviewsPage() {
                 {selectedInterview.status === "scheduled" && (
                   <Button onClick={() => {
                     setIsViewDetailsOpen(false)
-                    router.push(`/dashboard/candidate/interviews/${selectedInterview.id}`)
+                    router.push(`/dashboard/candidate/interviews/${selectedInterview._id}`)
                   }}>
                     Join Interview
                   </Button>

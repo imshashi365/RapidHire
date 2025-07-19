@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import useSWR from "swr"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -29,11 +30,13 @@ import {
   Filter,
   ArrowUpDown,
   MoreHorizontal,
+  Eye,
 } from "lucide-react"
 import { CompanyDashboardHeader } from "@/components/company-dashboard-header"
 import { CompanyDashboardSidebar } from "@/components/company-dashboard-sidebar"
 import { MobileMenu } from "@/components/ui/mobile-menu"
 import { useSession } from "next-auth/react"
+import { useRouter } from "next/navigation"
 
 // Mock data
 const mockCandidates = [
@@ -115,10 +118,16 @@ const mockPositions = [
   },
 ]
 
+const fetcher = (url: string) => fetch(url).then((res) => res.json())
+
 export default function CompanyDashboard() {
   const [isCreatePositionOpen, setIsCreatePositionOpen] = useState(false)
   const [isUploadResumeOpen, setIsUploadResumeOpen] = useState(false)
   const { data: session, status } = useSession()
+  const router = useRouter()
+  const { data, error } = useSWR("/api/companydata", fetcher)
+
+  const totalCandidates = data?.totalCandidates || 0
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -136,11 +145,15 @@ export default function CompanyDashboard() {
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-2xl font-bold">Company Dashboard</h1>
             <div className="flex items-center gap-2">
-              {/* <Button onClick={() => setIsCreatePositionOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                New Position
+              <Button 
+                onClick={() => router.push(`/${session?.user?.username}/careers`)} 
+                variant="outline"
+              >
+                <Eye className="mr-2 h-4 w-4" />
+                View Career Page
               </Button>
-              <Button variant="outline" onClick={() => setIsUploadResumeOpen(true)}>
+             
+              {/* <Button variant="outline" onClick={() => setIsUploadResumeOpen(true)}>
                 <Upload className="mr-2 h-4 w-4" />
                 Upload Resume
               </Button> */}
@@ -154,7 +167,7 @@ export default function CompanyDashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-500">Total Candidates</p>
-                    <h3 className="text-2xl font-bold">42</h3>
+                    <h3 className="text-2xl font-bold">{totalCandidates}</h3>
                   </div>
                   <div className="rounded-full bg-primary/10 p-3">
                     <Users className="h-6 w-6 text-primary" />
@@ -203,7 +216,7 @@ export default function CompanyDashboard() {
             </Card>
           </div>
 
-          <Tabs defaultValue="candidates" className="space-y-4">
+          {/* <Tabs defaultValue="candidates" className="space-y-4">
             <TabsList>
               <TabsTrigger value="candidates">Candidates</TabsTrigger>
               <TabsTrigger value="positions">Positions</TabsTrigger>
@@ -271,7 +284,7 @@ export default function CompanyDashboard() {
                             <Badge
                               variant={
                                 candidate.status === "Completed"
-                                  ? "success"
+                                  ? "default"
                                   : candidate.status === "Pending"
                                     ? "outline"
                                     : "secondary"
@@ -354,48 +367,12 @@ export default function CompanyDashboard() {
                 </CardContent>
               </Card>
             </TabsContent>
-          </Tabs>
+          </Tabs> */}
         </main>
       </div>
 
       {/* Create Position Dialog */}
-      <Dialog open={isCreatePositionOpen} onOpenChange={setIsCreatePositionOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Create New Position</DialogTitle>
-            <DialogDescription>Add a new position to start interviewing candidates</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="position-title">Position Title</Label>
-              <Input id="position-title" placeholder="e.g. Frontend Developer" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="department">Department</Label>
-              <Input id="department" placeholder="e.g. Engineering" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="description">Job Description</Label>
-              <Textarea id="description" placeholder="Enter job description..." className="min-h-[100px]" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="questions">Interview Questions</Label>
-              <Textarea
-                id="questions"
-                placeholder="Enter interview questions (one per line)..."
-                className="min-h-[100px]"
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCreatePositionOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={() => setIsCreatePositionOpen(false)}>Create Position</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
+   
       {/* Upload Resume Dialog */}
       <Dialog open={isUploadResumeOpen} onOpenChange={setIsUploadResumeOpen}>
         <DialogContent className="sm:max-w-[500px]">

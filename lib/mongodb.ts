@@ -5,9 +5,14 @@ if (!process.env.MONGODB_URI) {
 }
 
 const uri = process.env.MONGODB_URI
-const options = {}
+const options = {
+  maxPoolSize: 10,
+  minPoolSize: 5,
+  connectTimeoutMS: 10000,
+  socketTimeoutMS: 45000,
+}
 
-let client
+let client: MongoClient
 let clientPromise: Promise<MongoClient>
 
 if (process.env.NODE_ENV === "development") {
@@ -17,10 +22,6 @@ if (process.env.NODE_ENV === "development") {
     _mongoClientPromise?: Promise<MongoClient>
   }
 
-
-
-
-  
   if (!globalWithMongo._mongoClientPromise) {
     client = new MongoClient(uri, options)
     globalWithMongo._mongoClientPromise = client.connect()
@@ -47,8 +48,8 @@ export async function connectToDatabase() {
     
     return { client, db }
   } catch (error) {
-    console.error("MongoDB connection error:", error)
-    throw error
+    console.error("Database connection error:", error)
+    throw new Error("Failed to connect to database")
   }
 }
 

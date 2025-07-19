@@ -13,9 +13,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Bell, LogOut, User, Settings, CreditCard } from "lucide-react"
+import { Bell, LogOut, User, Settings, CreditCard, Menu } from "lucide-react"
 import { signOut, useSession } from "next-auth/react"
 import { toast } from "sonner"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 export function CompanyDashboardHeader() {
   const router = useRouter()
@@ -43,13 +44,14 @@ export function CompanyDashboardHeader() {
   }
 
   return (
-    <header className="flex h-14 items-center gap-4 border-b bg-black/95 backdrop-blur supports-[backdrop-filter]:bg-black/60 border-[#229799]/20 px-6">
+    <header className="flex h-14 items-center gap-4 border-b bg-white dark:bg-black/95 backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:supports-[backdrop-filter]:bg-black/60 border-gray-200 dark:border-[#229799]/20 px-6">
       <div className="flex flex-1 items-center gap-4">
         <Link href="/" className="flex items-center gap-2">
           <Image src="/RapidHirelogo.png" alt="AI Interviewer" width={122} height={72} priority />
         </Link>
       </div>
       <div className="flex items-center gap-4">
+      <ThemeToggle />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="relative">
@@ -107,6 +109,7 @@ export function CompanyDashboardHeader() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+      
       </div>
     </header>
   )

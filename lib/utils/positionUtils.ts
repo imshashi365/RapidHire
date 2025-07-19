@@ -1,6 +1,7 @@
 import { ObjectId } from "mongodb"
 import clientPromise from "@/lib/mongodb"
 import { Position } from "@/lib/models/Position"
+import crypto from "crypto"
 
 export async function createPosition(position: Omit<Position, "_id" | "createdAt" | "updatedAt">) {
   const client = await clientPromise
@@ -13,7 +14,21 @@ export async function createPosition(position: Omit<Position, "_id" | "createdAt
   }
 
   const result = await db.collection("positions").insertOne(newPosition)
-  return result.insertedId
+  const positionId = result.insertedId
+  
+  // Generate a unique token for public interview link
+  const token = crypto.randomBytes(32).toString('hex')
+  
+  // Store the token in the database
+  await db.collection("interviewLinks").insertOne({
+    positionId: positionId,
+    token,
+    companyId: position.companyId,
+    createdAt: new Date(),
+    active: true
+  })
+  
+  return positionId
 }
 
 export async function getPositionById(id: string) {

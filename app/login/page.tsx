@@ -153,9 +153,9 @@ export default function LoginPage() {
     <div className="container flex h-screen w-screen flex-col items-center justify-center">
       <Link href="/" className="absolute left-4 top-4 md:left-8 md:top-8 flex items-center gap-2 font-bold text-xl">
         <span className="flex items-center gap-2">
-          <Image src="/RapidHirelogo.png" alt="AI Interviewer" width={32} height={32} />
+          <Image src="/RapidHirelogo.png" alt="AI Interviewer" width={82} height={82} />
         </span>
-        <span className="text-primary">AI</span>Interviewer
+
       </Link>
 
       <Suspense fallback={<div>Loading...</div>}>

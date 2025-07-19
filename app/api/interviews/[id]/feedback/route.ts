@@ -138,28 +138,56 @@ export async function GET(
 
     if (!interview.feedback) {
       console.log("No feedback available for interview");
-      return NextResponse.json(
-        { error: "No feedback available" },
-        { status: 404 }
-      );
+      // Check if we have structured conversation data even without feedback
+      const conversationData = interview.conversationData || [];
+      // Return an empty feedback structure instead of an error
+      return NextResponse.json({
+        feedback: {
+          rating: {
+            technicalSkills: 0,
+            communication: 0,
+            problemSolving: 0,
+            experience: 0
+          },
+          summary: "Feedback not yet available for this interview.",
+          recommendation: "Pending",
+          recommendationMsg: "Feedback generation is pending or not available.",
+          overallScore: 0
+        },
+        status: "pending",
+        conversation: interview.conversation || "",
+        conversationData: conversationData
+      });
     }
 
     console.log("Found interview with feedback:", interview.feedback);
 
-    // Return the feedback in the expected structure
+    // Check if we have structured conversation data
+    const conversationData = interview.conversationData || [];
+    
+    // Create a safe feedback structure with fallbacks for missing data
+    // First check if the feedback has the expected structure
+    const hasFeedbackRating = interview.feedback && 
+                              interview.feedback.rating && 
+                              typeof interview.feedback.rating === 'object';
+    
+    // Return the feedback in the expected structure with fallbacks
     const response = {
       feedback: {
         rating: {
-          technicalSkills: interview.feedback.rating.technicalSkills,
-          communication: interview.feedback.rating.communication,
-          problemSolving: interview.feedback.rating.problemSolving,
-          experience: interview.feedback.rating.experience
+          technicalSkills: hasFeedbackRating ? (interview.feedback.rating.technicalSkills || 0) : 0,
+          communication: hasFeedbackRating ? (interview.feedback.rating.communication || 0) : 0,
+          problemSolving: hasFeedbackRating ? (interview.feedback.rating.problemSolving || 0) : 0,
+          experience: hasFeedbackRating ? (interview.feedback.rating.experience || 0) : 0
         },
-        summary: interview.feedback.summary,
-        recommendation: interview.feedback.recommendation,
-        recommendationMsg: interview.feedback.recommendationMsg,
-        overallScore: interview.feedback.overallScore || interview.score
-      }
+        summary: interview.feedback.summary || "No detailed feedback available.",
+        recommendation: interview.feedback.recommendation || "Pending",
+        recommendationMsg: interview.feedback.recommendationMsg || "Feedback details not available.",
+        overallScore: interview.feedback.overallScore || interview.score || 0
+      },
+      status: interview.status || "completed",
+      conversation: interview.conversation || "",
+      conversationData: conversationData
     };
 
     console.log("Returning feedback response:", response);

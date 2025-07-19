@@ -2,6 +2,29 @@ import { NextResponse } from "next/server"
 import { hash } from "bcryptjs"
 import clientPromise from "@/lib/mongodb"
 
+function generateUsername(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '') // Remove special characters
+    .replace(/\s+/g, '') // Remove spaces
+}
+
+async function getUniqueUsername(db: any, baseUsername: string, role: string): Promise<string> {
+  let username = baseUsername
+  let counter = 1
+  
+  // Add role prefix to distinguish between company and candidate usernames
+  const prefix = role === "company" ? "c_" : "u_"
+  username = `${prefix}${username}`
+  
+  while (await db.collection("users").findOne({ username })) {
+    username = `${prefix}${baseUsername}${counter}`
+    counter++
+  }
+  
+  return username
+}
+
 export async function POST(req: Request) {
   try {
     const { name, email, password, role } = await req.json()
@@ -37,6 +60,10 @@ export async function POST(req: Request) {
       )
     }
 
+    // Generate unique username for all users
+    const baseUsername = generateUsername(name)
+    const username = await getUniqueUsername(db, baseUsername, role)
+
     // Hash password
     const hashedPassword = await hash(password, 12)
 
@@ -44,6 +71,7 @@ export async function POST(req: Request) {
     const result = await db.collection("users").insertOne({
       name,
       email,
+      username,
       password: hashedPassword,
       role,
       createdAt: new Date(),
@@ -51,7 +79,11 @@ export async function POST(req: Request) {
     })
 
     return NextResponse.json(
-      { message: "User created successfully", userId: result.insertedId },
+      { 
+        message: "User created successfully", 
+        userId: result.insertedId,
+        username 
+      },
       { status: 201 }
     )
   } catch (error) {

@@ -27,8 +27,8 @@ interface Experience {
   title: string
   company: string
   location: string
-  startDate: string
-  endDate: string
+  startDate: Date
+  endDate: Date | string
   current: boolean
   description: string
 }
@@ -37,8 +37,8 @@ interface Education {
   school: string
   degree: string
   field: string
-  startDate: string
-  endDate: string
+  startDate: Date
+  endDate: Date | string
   current: boolean
   description: string
 }
@@ -91,6 +91,20 @@ const ProfilePage = () => {
         throw new Error("Failed to fetch profile")
       }
       const data = await response.json()
+
+      // Parse dates in experience and education
+      data.experience = data.experience.map((exp: any) => ({
+        ...exp,
+        startDate: new Date(exp.startDate),
+        endDate: exp.current ? "Till Date" : new Date(exp.endDate),
+      }))
+
+      data.education = data.education.map((edu: any) => ({
+        ...edu,
+        startDate: new Date(edu.startDate),
+        endDate: edu.current ? "Till Date" : new Date(edu.endDate),
+      }))
+
       setProfile(data)
     } catch (error) {
       console.error("Error fetching profile:", error)
@@ -105,7 +119,38 @@ const ProfilePage = () => {
     }
   }, [session?.user?.id, fetchProfile])
 
-  // Memoize handlers to prevent unnecessary re-renders
+  // Ensure the "Till Date" selection properly updates the `endDate` field as "Till Date" and `current` as `true`
+  const handleExperienceChange = (index: number, field: keyof Experience, value: string | boolean | Date) => {
+    setProfile(prev => ({
+      ...prev,
+      experience: prev.experience.map((exp, i) => 
+        i === index ? { 
+          ...exp, 
+          [field]: field === "startDate" || field === "endDate" ? new Date(value as string) : value,
+          ...(field === "current" && value === true ? { endDate: "Till Date" } : {}),
+        } : exp
+      )
+    }))
+  }
+
+  const handleEducationChange = (index: number, field: keyof Education, value: string | boolean | Date) => {
+    setProfile(prev => ({
+      ...prev,
+      education: prev.education.map((edu, i) => 
+        i === index ? { ...edu, [field]: field === "startDate" || field === "endDate" ? new Date(value as string) : value } : edu
+      )
+    }))
+  }
+
+  const handleSkillChange = (index: number, field: keyof Skill, value: string) => {
+    setProfile(prev => ({
+      ...prev,
+      skills: prev.skills.map((skill, i) => 
+        i === index ? { ...skill, [field]: value } : skill
+      )
+    }))
+  }
+
   const handleSave = useCallback(async () => {
     try {
       setIsLoading(true)
@@ -116,39 +161,22 @@ const ProfilePage = () => {
         return
       }
 
-      // Create a clean profile object without any MongoDB-specific fields
+      // Ensure the `current` field is included in the API payload and handle "Till Date" properly
       const cleanProfile = {
         experience: profile.experience.map(exp => ({
-          title: exp.title,
-          company: exp.company,
-          location: exp.location,
-          startDate: exp.startDate,
-          endDate: exp.endDate,
+          ...exp,
+          startDate: exp.startDate instanceof Date && !isNaN(exp.startDate.getTime()) ? exp.startDate.toISOString() : "",
+          endDate: exp.current ? "Till Date" : (exp.endDate instanceof Date && !isNaN(exp.endDate.getTime()) ? exp.endDate.toISOString() : ""),
           current: exp.current,
-          description: exp.description
         })),
         education: profile.education.map(edu => ({
-          school: edu.school,
-          degree: edu.degree,
-          field: edu.field,
-          startDate: edu.startDate,
-          endDate: edu.endDate,
+          ...edu,
+          startDate: edu.startDate instanceof Date && !isNaN(edu.startDate.getTime()) ? edu.startDate.toISOString() : "",
+          endDate: edu.current ? "Till Date" : (edu.endDate instanceof Date && !isNaN(edu.endDate.getTime()) ? edu.endDate.toISOString() : ""),
           current: edu.current,
-          description: edu.description
         })),
-        skills: profile.skills.map(skill => ({
-          name: skill.name,
-          level: skill.level
-        })),
-        user: {
-          name: profile.user.name,
-          email: profile.user.email,
-          phone: profile.user.phone,
-          location: profile.user.location,
-          website: profile.user.website,
-          bio: profile.user.bio,
-          avatar: profile.user.avatar
-        }
+        skills: profile.skills,
+        user: profile.user,
       }
 
       const response = await fetch("/api/candidate/profile", {
@@ -170,6 +198,9 @@ const ProfilePage = () => {
       setProfile(data)
       setIsEditing(false)
       toast.success("Profile updated successfully")
+
+      // Reload the page after saving changes
+      window.location.reload()
     } catch (error) {
       console.error("Error updating profile:", error)
       toast.error(error instanceof Error ? error.message : "Failed to update profile")
@@ -195,8 +226,8 @@ const ProfilePage = () => {
         title: "",
         company: "",
         location: "",
-        startDate: "",
-        endDate: "",
+        startDate: new Date(),
+        endDate: new Date(),
         current: false,
         description: ""
       }]
@@ -210,8 +241,8 @@ const ProfilePage = () => {
         school: "",
         degree: "",
         field: "",
-        startDate: "",
-        endDate: "",
+        startDate: new Date(),
+        endDate: new Date(),
         current: false,
         description: ""
       }]
@@ -249,33 +280,6 @@ const ProfilePage = () => {
     }))
   }, [])
 
-  const handleExperienceChange = (index: number, field: keyof Experience, value: string | boolean) => {
-    setProfile(prev => ({
-      ...prev,
-      experience: prev.experience.map((exp, i) => 
-        i === index ? { ...exp, [field]: value } : exp
-      )
-    }))
-  }
-
-  const handleEducationChange = (index: number, field: keyof Education, value: string | boolean) => {
-    setProfile(prev => ({
-      ...prev,
-      education: prev.education.map((edu, i) => 
-        i === index ? { ...edu, [field]: value } : edu
-      )
-    }))
-  }
-
-  const handleSkillChange = (index: number, field: keyof Skill, value: string) => {
-    setProfile(prev => ({
-      ...prev,
-      skills: prev.skills.map((skill, i) => 
-        i === index ? { ...skill, [field]: value } : skill
-      )
-    }))
-  }
-
   return (
     <div className="flex min-h-screen flex-col">
       <CandidateDashboardHeader />
@@ -311,7 +315,7 @@ const ProfilePage = () => {
               <div className="grid gap-6 md:grid-cols-3">
                 <Card className="md:col-span-1">
                   <CardHeader>
-                    <CardTitle>Profile Information</CardTitle>
+                    <CardTitle>Personal Information</CardTitle>
                     <CardDescription>Your personal and contact details</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
@@ -374,7 +378,7 @@ const ProfilePage = () => {
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="bio">Bio</Label>
+                          <Label htmlFor="bio">Profile Summary</Label>
                           <Textarea
                             id="bio"
                             value={profile.user.bio}
@@ -460,17 +464,41 @@ const ProfilePage = () => {
                                         <Label htmlFor={`start-date-${index}`}>Start Date</Label>
                                         <Input 
                                           id={`start-date-${index}`} 
-                                          value={exp.startDate}
-                                          onChange={(e) => handleExperienceChange(index, "startDate", e.target.value)}
+                                          type="date"
+                                          value={exp.startDate instanceof Date && !isNaN(exp.startDate.getTime()) ? exp.startDate.toISOString().split("T")[0] : ""}
+                                          onChange={(e) => handleExperienceChange(index, "startDate", new Date(e.target.value))}
                                         />
                                       </div>
                                       <div className="space-y-2">
                                         <Label htmlFor={`end-date-${index}`}>End Date</Label>
-                                        <Input 
-                                          id={`end-date-${index}`} 
-                                          value={exp.endDate}
-                                          onChange={(e) => handleExperienceChange(index, "endDate", e.target.value)}
-                                        />
+                                        <Select
+                                          value={exp.current ? "Till Date" : exp.endDate instanceof Date && !isNaN(exp.endDate.getTime()) ? exp.endDate.toISOString().split("T")[0] : ""}
+                                          onValueChange={(value) => {
+                                            if (value === "Till Date") {
+                                              handleExperienceChange(index, "current", true)
+                                              handleExperienceChange(index, "endDate", "Till Date")
+                                            } else {
+                                              handleExperienceChange(index, "current", false)
+                                              handleExperienceChange(index, "endDate", new Date(value))
+                                            }
+                                          }}
+                                        >
+                                          <SelectTrigger>
+                                            <SelectValue placeholder="Select End Date" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            <SelectItem value="Till Date">Till Date</SelectItem>
+                                            <SelectItem value="Specific Date">Specific Date</SelectItem>
+                                          </SelectContent>
+                                        </Select>
+                                        {!exp.current && (
+                                          <Input 
+                                            id={`end-date-${index}`} 
+                                            type="date"
+                                            value={exp.endDate instanceof Date && !isNaN(exp.endDate.getTime()) ? exp.endDate.toISOString().split("T")[0] : ""}
+                                            onChange={(e) => handleExperienceChange(index, "endDate", new Date(e.target.value))}
+                                          />
+                                        )}
                                       </div>
                                     </div>
                                     <div className="space-y-2">
@@ -500,7 +528,8 @@ const ProfilePage = () => {
                                     <div className="flex items-center justify-between mb-2">
                                       <h3 className="font-semibold text-lg">{exp.title}</h3>
                                       <Badge variant="outline">
-                                        {exp.startDate} - {exp.endDate}
+                                        {exp.startDate instanceof Date && !isNaN(exp.startDate.getTime()) ? exp.startDate.toISOString().split("T")[0] : "Invalid Date"} -
+                                        {exp.endDate === "Till Date" ? "Till Date" : exp.endDate instanceof Date && !isNaN(exp.endDate.getTime()) ? exp.endDate.toISOString().split("T")[0] : "Invalid Date"}
                                       </Badge>
                                     </div>
                                     <div className="flex items-center gap-2 mb-4 text-sm text-gray-500">
@@ -546,14 +575,23 @@ const ProfilePage = () => {
                                   <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                       <Label htmlFor={`degree-${index}`}>Degree</Label>
-                                      <Input 
-                                        id={`degree-${index}`} 
+                                      <Select
                                         value={edu.degree}
-                                        onChange={(e) => handleEducationChange(index, "degree", e.target.value)}
-                                      />
+                                        onValueChange={(value) => handleEducationChange(index, "degree", value)}
+                                      >
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="Select Degree" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="High School">High School</SelectItem>
+                                          <SelectItem value="Intermediate">Intermediate</SelectItem>
+                                          <SelectItem value="UnderGraduate">UnderGraduate</SelectItem>
+                                          <SelectItem value="PostGraduate">PostGraduate</SelectItem>
+                                        </SelectContent>
+                                      </Select>
                                     </div>
                                     <div className="space-y-2">
-                                      <Label htmlFor={`school-${index}`}>School</Label>
+                                      <Label htmlFor={`school-${index}`}>College/School</Label>
                                       <Input 
                                         id={`school-${index}`} 
                                         value={edu.school}
@@ -566,16 +604,18 @@ const ProfilePage = () => {
                                       <Label htmlFor={`edu-start-date-${index}`}>Start Date</Label>
                                       <Input 
                                         id={`edu-start-date-${index}`} 
-                                        value={edu.startDate}
-                                        onChange={(e) => handleEducationChange(index, "startDate", e.target.value)}
+                                        type="date"
+                                        value={edu.startDate instanceof Date && !isNaN(edu.startDate.getTime()) ? edu.startDate.toISOString().split("T")[0] : ""}
+                                        onChange={(e) => handleEducationChange(index, "startDate", new Date(e.target.value))}
                                       />
                                     </div>
                                     <div className="space-y-2">
                                       <Label htmlFor={`edu-end-date-${index}`}>End Date</Label>
                                       <Input 
                                         id={`edu-end-date-${index}`} 
-                                        value={edu.endDate}
-                                        onChange={(e) => handleEducationChange(index, "endDate", e.target.value)}
+                                        type="date"
+                                        value={edu.endDate instanceof Date && !isNaN(edu.endDate.getTime()) ? edu.endDate.toISOString().split("T")[0] : ""}
+                                        onChange={(e) => handleEducationChange(index, "endDate", new Date(e.target.value))}
                                       />
                                     </div>
                                   </div>
@@ -606,7 +646,8 @@ const ProfilePage = () => {
                                   <div className="flex items-center justify-between mb-2">
                                     <h3 className="font-semibold text-lg">{edu.degree}</h3>
                                     <Badge variant="outline">
-                                      {edu.startDate} - {edu.endDate}
+                                      {edu.startDate instanceof Date && !isNaN(edu.startDate.getTime()) ? edu.startDate.toISOString().split("T")[0] : "Invalid Date"} -
+                                      {edu.endDate === "Till Date" ? "Till Date" : edu.endDate instanceof Date && !isNaN(edu.endDate.getTime()) ? edu.endDate.toISOString().split("T")[0] : "Invalid Date"}
                                     </Badge>
                                   </div>
                                   <div className="flex items-center gap-2 mb-4 text-sm text-gray-500">

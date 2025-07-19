@@ -1,4 +1,8 @@
-import mongoose from "mongoose"
+import mongoose, { Document } from "mongoose"
+
+interface InterviewDocument extends Document {
+  updatedAt: Date;
+}
 
 const interviewSchema = new mongoose.Schema({
   positionId: {
@@ -18,7 +22,7 @@ const interviewSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ["pending", "scheduled", "in-progress", "completed", "cancelled"],
+    enum: ["pending", "scheduled", "in-progress", "completed", "cancelled", "shortlisted", "rejected"],
     default: "pending"
   },
   date: {
@@ -87,15 +91,30 @@ const interviewSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "Position",
     required: true
-  }
+  },
+  conversation: [{
+    role: {
+      type: String,
+      enum: ['assistant', 'user'],
+      required: true
+    },
+    content: {
+      type: String,
+      required: true
+    },
+    timestamp: {
+      type: Date,
+      required: true
+    }
+  }]
 }, {
   timestamps: true
 })
 
 // Update the updatedAt field before saving
-interviewSchema.pre("save", function(next) {
+interviewSchema.pre<InterviewDocument>("save", function(next: mongoose.CallbackWithoutResultAndOptionalError) {
   this.updatedAt = new Date()
   next()
 })
 
-export default mongoose.models.Interview || mongoose.model("Interview", interviewSchema) 
+export default mongoose.models.Interview || mongoose.model<InterviewDocument>("Interview", interviewSchema)

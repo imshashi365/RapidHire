@@ -7,8 +7,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Calendar, Clock, CheckCircle, AlertCircle, ChevronRight } from "lucide-react"
 import { CandidateDashboardHeader } from "@/components/candidate-dashboard-header"
 import { CandidateDashboardSidebar } from "@/components/candidate-dashboard-sidebar"
+import { useState } from "react"
 
-// Mock data
+const[time,setTIme]=useState("");
+
+
 const mockInterviews = [
   {
     id: 1,
@@ -39,12 +42,23 @@ const mockInterviews = [
 export default function CandidateDashboard() {
   return (
     <div className="flex min-h-screen flex-col">
+
+
+      <div className="flex justify-around">
+        <div className="bg-red">Div 1</div>
+        <div className="bg-blue">Div 2</div>
+        <div className="bg-yellow-50">Div 3</div>
+      </div>
       <CandidateDashboardHeader />
 
       <div className="flex flex-1">
         <CandidateDashboardSidebar />
 
         <main className="flex-1 p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold">Dashboard</h1>
+          </div>
+
           <div className="mb-6">
             <h1 className="text-2xl font-bold">Candidate Dashboard</h1>
             <p className="text-gray-500">Manage your interviews and track your applications</p>
