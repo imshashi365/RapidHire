@@ -19,10 +19,21 @@ const nextConfig = {
   },
   // Removed static export since we're using dynamic API routes
   output: undefined,
+  // Configure basePath and assetPrefix for production
+  basePath: process.env.NODE_ENV === 'production' ? '' : '',
+  assetPrefix: process.env.NODE_ENV === 'production' ? 'https://rapidhire.today' : '',
+  // Configure images for production
   images: {
-    // Using optimized images for better performance
-    domains: ['localhost', 'rapidhire.example.com'], // Add your domain here
+    domains: ['localhost', 'rapidhire.today'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+    ],
   },
+  // Ensure trailing slash for better compatibility
+  trailingSlash: true,
   experimental: {
     webpackBuildWorker: true,
     parallelServerCompiles: true,
