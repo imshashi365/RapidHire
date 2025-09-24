@@ -23,10 +23,10 @@ import Vapi from "@vapi-ai/web"
 
 interface InterviewFeedback {
   rating: {
-    technicalSkills: number;
-    communication: number;
-    problemSolving: number;
-    experience: number;
+    englishCommunication: number;
+    confidence: number;
+    storytelling: number;
+    customerHandling: number;
   };
   summary: string;
   recommendation: string;
@@ -119,7 +119,7 @@ export default function InterviewSession() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const [isVideoOn, setIsVideoOn] = useState(true)
-  const [isMicOn, setIsMicOn] = useState(true)
+  const [isMicOn, setIsMicOn] = useState(false)
   const [interviewData, setInterviewData] = useState<any>(null)
   const [interview, setInterview] = useState<InterviewState>({
     isStarted: false,
@@ -138,12 +138,13 @@ export default function InterviewSession() {
   const [showExitDialog, setShowExitDialog] = useState(false)
   const [feedback, setFeedback] = useState<InterviewFeedback | null>(null);
   const [feedbackLoading, setFeedbackLoading] = useState(false);
+  
 
   // Fetch interview data
   useEffect(() => {
     const fetchInterviewData = async () => {
       if (!params.id) return
-      
+
       try {
         const response = await fetch(`/api/interviews/${params.id}`)
         if (!response.ok) {
@@ -151,7 +152,7 @@ export default function InterviewSession() {
           throw new Error(errorData.error || "Failed to fetch interview details")
         }
         const data = await response.json()
-        
+
         // Fetch position details if needed
         if (data.positionId && !data.position?.title) {
           const positionResponse = await fetch(`/api/positions/${data.positionId}`)
@@ -160,7 +161,7 @@ export default function InterviewSession() {
             data.position = positionData
           }
         }
-        
+
         setInterviewData(data)
       } catch (error) {
         console.error("Error fetching interview data:", error)
@@ -182,7 +183,7 @@ export default function InterviewSession() {
       try {
         setLoadingState('initializing')
         console.log("Initializing VAPI...")
-        
+
         if (!VAPI_KEY) {
           throw new Error("VAPI key is not configured. Please check your environment variables.")
         }
@@ -209,14 +210,14 @@ export default function InterviewSession() {
         vapiRef.current.on("call-end", async () => {
           console.log("Call ended")
           setInterview(prev => ({ ...prev, isEnded: true }))
-          
+
           // Wait for any pending state updates
           await new Promise(resolve => setTimeout(resolve, 2000))
-          
+
           // Get the latest conversation data
           const currentConversation = interview.messages || []
           console.log("Current conversation data:", currentConversation)
-          
+
           if (currentConversation.length > 0) {
             try {
               // Prepare the conversation for analysis
@@ -251,7 +252,7 @@ export default function InterviewSession() {
               }
 
               const feedback = await response.json()
-              
+
               // Update interview state with feedback
               setInterview(prev => ({
                 ...prev,
@@ -336,10 +337,10 @@ export default function InterviewSession() {
             toast.error(safeError.message)
             setError(safeError.message)
           }
-          
+
           setLoadingState(null)
           setIsLoading(false)
-          
+
           // Only stop VAPI if it's a critical error
           if (safeError.action !== 'camera-error' && !safeError.message.includes("Meeting has ended")) {
             if (vapiRef.current) {
@@ -392,19 +393,19 @@ export default function InterviewSession() {
       const initializeCamera = async () => {
         try {
           // Request camera permissions first
-          const stream = await navigator.mediaDevices.getUserMedia({ 
-            video: true, 
-            audio: isMicOn 
+          const stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: isMicOn
           })
 
           if (videoRef.current) {
             videoRef.current.srcObject = stream
           }
-          
+
         } catch (error) {
           console.error("Error accessing camera:", error)
           setIsVideoOn(false)
-          
+
           // Handle specific permission errors
           if (error instanceof Error && error.name === 'NotAllowedError') {
             toast.error("Camera access denied. Continuing without video.")
@@ -458,14 +459,23 @@ export default function InterviewSession() {
       setError(null)
 
       // Get questions from position data and handle both string and array formats
-      const questions = interviewData.position?.questions || []
-      const questionList = Array.isArray(questions) 
-        ? questions.join('\n')
-        : questions || ""
+      const questions = interviewData.position?.questions || [];
+      
+      // Parse questions if it's a string (from DB) or use as array
+      const questionsArray = typeof questions === 'string' 
+        ? questions.split('\n').filter(q => q.trim() !== '')
+        : Array.isArray(questions) 
+          ? questions 
+          : [];
+          
+      // Get the first question or use a default
+      const firstQuestion = questionsArray.length > 0 
+        ? questionsArray[0].trim() 
+        : 'Tell me about yourself and why you\'re interested in this role.';
 
       const callConfig = {
         name: "AI Recruiter",
-        firstMessage: `Hello ${session.user.name}, I'm your AI interviewer for the ${interviewData.position.title} position. I'll be asking you a series of questions to assess your fit for this role. Let's begin!`,
+        firstMessage: `Hello ${session.user.name}, I'm your AI interviewer for the ${interviewData.position.title} position at Invoay. I'll be asking you a series of questions to assess your fit for this role. Let's begin!\n\nFirst question: ${firstQuestion}`,
         transcriber: {
           provider: "deepgram",
           model: "nova-2",
@@ -483,17 +493,38 @@ export default function InterviewSession() {
           messages: [
             {
               role: "system",
-              content: `You are an AI voice AI Recruiter AGENT conducting interviews.
-                Your job is to ask candidates provided interview questions, assess their responses.
-                Begin the conversation with a friendly introduction, setting a relaxed yet professional tone.
-                Ask one question at a time and wait for the candidate's response before proceeding.
-                Keep the questions clear and concise.
-                Questions: ${questionList}
-                If the candidate struggles, offer hints or rephrase the question without giving away the answer.
-                Provide brief, encouraging feedback after each answer.
-                Keep the conversation natural and engaging.
-                After all questions, wrap up the interview smoothly by summarizing their performance.
-                End on a positive note.`
+              content: `You are an AI Voice Recruiter AGENT conducting interviews for Invoay, a leading SaaS company providing salon and retail management software. 
+        Your role is to evaluate candidates for Sales Executive / Customer Success positions with an extremely strict bar for English fluency, communication, storytelling, and sales ability.
+        
+        🔎 Interview Standards:
+        - Only candidates with near-native English, flawless communication, and strong persuasive storytelling should pass.
+        - Weak grammar, hesitation, filler words, or vague answers = instant rejection.
+        - Storytelling and persuasion must be clear, structured, and tailored to salon-owner scenarios.
+        - Customer empathy must be demonstrated by showing understanding of salon business challenges.
+        
+        🎤 Conversation Style:
+        - Begin warmly but stay professional and business-like.
+        - Immediately follow your greeting with the first interview question (do not wait for the candidate’s reply to start).
+        - Then proceed with one question at a time, probing deeper if needed: “Can you make it more convincing?”, “How would you explain that to a salon owner with no tech background?”
+        - Acknowledge responses briefly (“Thank you”, “Clear point”) but never over-praise weak answers.
+        
+        ⚖️ Evaluation Criteria:
+        - English Fluency & Communication: Must be polished, natural, and professional.
+        - Confidence & Presence: Strong voice, no hesitation, convincing tone.
+        - Storytelling & Persuasion: Ability to sell, engage, and handle resistance persuasively.
+        - Customer Handling: Ability to empathize, explain SaaS benefits in salon context, and resolve concerns.
+        
+        🛑 Strict Filtering:
+        - Candidates must excel in ALL dimensions to be recommended.
+        - Even small flaws in English, persuasion, or confidence should be flagged.
+        - Only ~1–5% of candidates should receive a positive recommendation.
+        
+        📌 Closing:
+        - At the end, provide a tough but fair summary of performance.
+        - Highlight gaps clearly (e.g., “lacked persuasive storytelling”, “English fluency not world-class”).
+        - Thank the candidate for their time professionally, without hinting at success unless performance was outstanding.
+        
+        Questions: ${questionsArray.join('\n')}`
             }
           ]
         },
@@ -502,6 +533,7 @@ export default function InterviewSession() {
           userId: session.user.id
         }
       }
+
 
       console.log("Starting VAPI call with config:", JSON.stringify(callConfig, null, 2))
 
@@ -578,7 +610,7 @@ export default function InterviewSession() {
 
     const handleMessage = (message: any) => {
       console.log("Received VAPI message:", message)
-      
+
       if (message.type === "assistant-message") {
         console.log("Assistant message:", {
           content: message.content,
@@ -653,29 +685,29 @@ export default function InterviewSession() {
     try {
       if (vapiRef.current) {
         console.log("Starting interview end process")
-        
+
         // Get current conversation state
         const currentConversation = interview.messages
-        console.log("Current conversation before ending:", 
+        console.log("Current conversation before ending:",
           JSON.stringify(currentConversation, null, 2))
-        
+
         // End the VAPI call gracefully
         console.log("Stopping VAPI call")
         await vapiRef.current.stop()
-        
+
         // Wait for any pending messages
         console.log("Waiting for pending messages...")
         await new Promise(resolve => setTimeout(resolve, 2000))
-        
+
         // Update interview state
         setInterview(prev => ({ ...prev, isEnded: true }))
-        
+
         // Save conversation if we have data
         if (currentConversation.length > 0) {
           console.log("Saving conversation with length:", currentConversation.length)
           console.log("Conversation content:", JSON.stringify(currentConversation, null, 2))
           await saveConversation()
-          
+
           // Generate and save feedback
           const feedbackResult = await generateFeedback(currentConversation)
           if (feedbackResult) {
@@ -684,7 +716,7 @@ export default function InterviewSession() {
         } else {
           console.warn("No conversation data to save")
         }
-        
+
         // Show success message and redirect
         toast.success('Interview completed successfully!')
         router.push(`/dashboard/candidate/interview/start/success?interviewId=${params.id}`)
@@ -697,7 +729,7 @@ export default function InterviewSession() {
 
   // Update saveConversation to include more logging
   const saveConversation = async () => {
-    console.log("Attempting to save conversation:", 
+    console.log("Attempting to save conversation:",
       JSON.stringify(interview.messages, null, 2))
     if (!interview.messages.length) {
       console.warn("No conversation data to save")
@@ -719,7 +751,7 @@ export default function InterviewSession() {
         throw new Error('Failed to save conversation')
       }
 
-      console.log("Conversation saved successfully. Saved data:", 
+      console.log("Conversation saved successfully. Saved data:",
         JSON.stringify(interview.messages, null, 2))
       toast.success('Conversation saved successfully')
     } catch (error) {
@@ -738,37 +770,37 @@ export default function InterviewSession() {
     }
   }, [])
 
-  const generateFeedback = async (conversation: Array<{role: string, content: string, timestamp: string}>) => {
+  const generateFeedback = async (conversation: Array<{ role: string, content: string, timestamp: string }>) => {
     try {
       setFeedbackLoading(true);
       console.log("Generating feedback for interview...");
-      
+
       if (!conversation.length) {
         console.warn("No conversation data available for feedback generation");
         toast.warning("No conversation data available for feedback");
         return null;
       }
-      
+
       // Format the conversation for the API request
       const conversationText = conversation
         .map(msg => `${msg.role}: ${msg.content}`)
         .join('\n');
-      
+
       console.log("Sending conversation for feedback:", conversationText);
-      
+
       // Format position data
       const positionData = interviewData?.position ? {
         title: interviewData.position.title || "Unknown Position",
         minExperience: interviewData.position.minExperience || 0,
         maxExperience: interviewData.position.maxExperience || 10,
-        requirements: Array.isArray(interviewData.position.requirements) 
-          ? interviewData.position.requirements 
+        requirements: Array.isArray(interviewData.position.requirements)
+          ? interviewData.position.requirements
           : [],
-        questions: Array.isArray(interviewData.position.questions) 
-          ? interviewData.position.questions 
+        questions: Array.isArray(interviewData.position.questions)
+          ? interviewData.position.questions
           : []
       } : { title: "Unknown Position" };
-      
+
       // Make API call to generate feedback
       const response = await fetch('/api/interview/feedback', {
         method: 'POST',
@@ -789,15 +821,15 @@ export default function InterviewSession() {
 
       const feedbackData = await response.json();
       console.log("Feedback generated:", feedbackData);
-      
+
       setFeedback(feedbackData.feedback);
-      
+
       // Save feedback to database
       await saveFeedback(feedbackData.feedback);
-      
+
       toast.success("Interview feedback generated successfully");
       return feedbackData.feedback;
-      
+
     } catch (error) {
       console.error("Error generating feedback:", error);
       toast.error("Failed to generate interview feedback");
@@ -822,7 +854,7 @@ export default function InterviewSession() {
       if (!response.ok) {
         throw new Error("Failed to save feedback");
       }
-      
+
       console.log("Feedback saved successfully");
     } catch (error) {
       console.error("Error saving feedback:", error);
@@ -836,7 +868,7 @@ export default function InterviewSession() {
 
     const handleMessage = (message: any) => {
       console.log("Received VAPI message:", message)
-      
+
       if (message.type === "assistant-message") {
         console.log("Assistant message:", {
           content: message.content,
@@ -875,19 +907,19 @@ export default function InterviewSession() {
     const handleCallEnd = async () => {
       console.log("Call ended");
       setInterview(prev => ({ ...prev, isEnded: true }));
-      
+
       // Wait for any pending state updates
       await new Promise(resolve => setTimeout(resolve, 2000));
-      
+
       // Get the latest conversation data
       const currentConversation = interview.messages || [];
       console.log("Current conversation data:", currentConversation);
-      
+
       if (currentConversation.length > 0) {
         try {
           // Generate feedback from the conversation
           const feedbackResult = await generateFeedback(currentConversation);
-          
+
           if (feedbackResult) {
             // Update interview state with feedback
             setInterview(prev => ({
@@ -895,16 +927,16 @@ export default function InterviewSession() {
               isCompleted: true,
               feedback: feedbackResult.summary,
               score: Math.round((
-                feedbackResult.rating.technicalSkills + 
-                feedbackResult.rating.communication + 
-                feedbackResult.rating.problemSolving + 
+                feedbackResult.rating.technicalSkills +
+                feedbackResult.rating.communication +
+                feedbackResult.rating.problemSolving +
                 feedbackResult.rating.experience
               ) * 10) // Convert to a score out of 100
             }));
-            
+
             // Show success message
             toast.success('Interview completed! Feedback generated.');
-            
+
             // Redirect to success page after a short delay with the interview ID
             setTimeout(() => {
               router.push(`/dashboard/candidate/interview/start/success?interviewId=${params.id}`);
@@ -1013,9 +1045,9 @@ export default function InterviewSession() {
                   )}
                 </div>
                 <h2 className="text-lg font-medium mb-2 text-white">{session.user.name || "Candidate"}</h2>
-                <p className="text-gray-400 text-center">
+                {/* <p className="text-gray-400 text-center">
                   {isRecording ? "Recording..." : "Click the microphone to start"}
-                </p>
+                </p> */}
                 <div className="mt-4 w-full max-h-[200px] overflow-y-auto">
                   {interview.messages.map((message, index) => (
                     message.role === "user" && (
@@ -1045,8 +1077,7 @@ export default function InterviewSession() {
                   </Button>
                   <Button
                     size="lg"
-                    variant="outline"
-                    className="px-8"
+                    className="px-8 bg-white text-black"
                     onClick={handleExitInterview}
                     disabled={isLoading}
                   >
@@ -1058,7 +1089,7 @@ export default function InterviewSession() {
                   <Button
                     size="lg"
                     variant={isRecording ? "destructive" : "secondary"}
-                    className="rounded-full w-12 h-12"
+                    className="rounded-full w-12 h-12 display-none"
                     onClick={() => setIsRecording(!isRecording)}
                     disabled={interview.isEnded}
                   >
@@ -1068,21 +1099,19 @@ export default function InterviewSession() {
                     variant="outline"
                     size="icon"
                     onClick={() => setIsVideoOn(!isVideoOn)}
-                    className="rounded-full w-12 h-12"
+                    className="rounded-full w-12 h-12 display-none"
                   >
                     {isVideoOn ? <Video className="h-6 w-6" /> : <VideoOff className="h-6 w-6" />}
                   </Button>
                   <Button
-                    variant="outline"
                     size="icon"
                     onClick={() => setIsMicOn(!isMicOn)}
-                    className="rounded-full w-12 h-12"
+                    className="rounded-full w-12 h-12 display-none"
                   >
                     {isMicOn ? <Mic className="h-6 w-6" /> : <MicOff className="h-6 w-6" />}
                   </Button>
                   <Button
                     size="lg"
-                    variant="destructive"
                     className="px-8"
                     onClick={handleEndInterview}
                     disabled={interview.isEnded}
@@ -1096,8 +1125,8 @@ export default function InterviewSession() {
             <div className="text-center mt-4 text-gray-400">
               {loadingState === 'initializing' && "Loading interview details..."}
               {loadingState === 'starting' && "Starting interview..."}
-              {loadingState === 'ready' && !interview.isStarted && 
-                (interviewData?.position?.title 
+              {loadingState === 'ready' && !interview.isStarted &&
+                (interviewData?.position?.title
                   ? "Click 'Start Interview' to begin"
                   : "Waiting for interview data...")}
               {interview.isStarted && "Interview in Progress..."}
@@ -1121,7 +1150,7 @@ export default function InterviewSession() {
             <AlertDialogHeader>
               <AlertDialogTitle className="text-white">Exit Interview?</AlertDialogTitle>
               <AlertDialogDescription className="text-gray-400">
-                {interview.isStarted 
+                {interview.isStarted
                   ? "Are you sure you want to end this interview? This action cannot be undone, and your progress will be saved."
                   : "Are you sure you want to exit? You can return to this interview later."}
               </AlertDialogDescription>

@@ -23,10 +23,10 @@ import Vapi from "@vapi-ai/web"
 
 interface InterviewFeedback {
   rating: {
-    technicalSkills: number;
-    communication: number;
-    problemSolving: number;
-    experience: number;
+    englishCommunication: number;
+    confidence: number;
+    storytelling: number;
+    customerHandling: number;
   };
   summary: string;
   recommendation: string;
@@ -858,11 +858,11 @@ export default function InterviewSession() {
           isCompleted: true,
           feedback: feedbackResult.summary,
           score: Math.round((
-            feedbackResult.rating.technicalSkills + 
-            feedbackResult.rating.communication + 
-            feedbackResult.rating.problemSolving + 
-            feedbackResult.rating.experience
-          ) * 10) // Convert to a score out of 100
+            (feedbackResult.rating.englishCommunication * 0.4) +  // 40% weight
+            (feedbackResult.rating.confidence * 0.3) +           // 30% weight
+            (feedbackResult.rating.storytelling * 0.15) +        // 15% weight
+            (feedbackResult.rating.customerHandling * 0.15)      // 15% weight
+          ) * 100) // Convert to a score out of 100
         }));
       }
       
@@ -1069,10 +1069,10 @@ export default function InterviewSession() {
             const basicFeedback = {
               summary: "Thank you for completing the interview. Your responses have been recorded.",
               rating: {
-                technicalSkills: 5,
-                communication: 5,
-                problemSolving: 5,
-                experience: 5
+                englishCommunication: 5,
+                confidence: 5,
+                storytelling: 5,
+                customerHandling: 5
               },
               recommendation: "Maybe",
               recommendationMsg: "Your interview has been recorded for review."

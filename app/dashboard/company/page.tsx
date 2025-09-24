@@ -19,7 +19,8 @@ import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Progress } from "@/components/ui/progress"
 import { Textarea } from "@/components/ui/textarea"
-import {
+import { 
+  AlertCircle,
   BarChart,
   FileText,
   Plus,
@@ -35,6 +36,7 @@ import {
 import { CompanyDashboardHeader } from "@/components/company-dashboard-header"
 import { CompanyDashboardSidebar } from "@/components/company-dashboard-sidebar"
 import { MobileMenu } from "@/components/ui/mobile-menu"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 
@@ -125,9 +127,75 @@ export default function CompanyDashboard() {
   const [isUploadResumeOpen, setIsUploadResumeOpen] = useState(false)
   const { data: session, status } = useSession()
   const router = useRouter()
-  const { data, error } = useSWR("/api/companydata", fetcher)
+  
+  // Define the type for the stats data
+  interface CompanyStats {
+    totalCandidates: number
+    activePositions: number
+    completedInterviews: number
+    averageScore: number
+  }
 
-  const totalCandidates = data?.totalCandidates || 0
+  // Fetch data with proper typing and error handling
+  const { data, error, isLoading } = useSWR<CompanyStats>(
+    "/api/companydata",
+    fetcher,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: true,
+      shouldRetryOnError: true,
+      errorRetryCount: 2,
+    }
+  )
+
+  // Set default values for loading/error states
+  const stats = {
+    totalCandidates: data?.totalCandidates ?? 0,
+    activePositions: data?.activePositions ?? 0,
+    completedInterviews: data?.completedInterviews ?? 0,
+    averageScore: data?.averageScore ?? 0,
+    isLoading,
+    error: error ? 'Failed to load dashboard data' : null
+  }
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen flex-col">
+        <CompanyDashboardHeader />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="flex min-h-screen flex-col">
+        <CompanyDashboardHeader />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center p-6 max-w-md">
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Error</AlertTitle>
+              <AlertDescription>
+                Failed to load dashboard data. Please try again later.
+              </AlertDescription>
+            </Alert>
+            <Button 
+              variant="outline" 
+              className="mt-4"
+              onClick={() => router.refresh()}
+            >
+              Retry
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -167,7 +235,13 @@ export default function CompanyDashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-500">Total Candidates</p>
-                    <h3 className="text-2xl font-bold">{totalCandidates}</h3>
+                    <h3 className="text-2xl font-bold">
+                      {stats.isLoading ? (
+                        <div className="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
+                      ) : (
+                        stats.totalCandidates.toLocaleString()
+                      )}
+                    </h3>
                   </div>
                   <div className="rounded-full bg-primary/10 p-3">
                     <Users className="h-6 w-6 text-primary" />
@@ -180,7 +254,13 @@ export default function CompanyDashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-500">Active Positions</p>
-                    <h3 className="text-2xl font-bold">8</h3>
+                    <h3 className="text-2xl font-bold">
+                      {stats.isLoading ? (
+                        <div className="h-8 w-12 bg-gray-200 rounded animate-pulse"></div>
+                      ) : (
+                        stats.activePositions
+                      )}
+                    </h3>
                   </div>
                   <div className="rounded-full bg-primary/10 p-3">
                     <FileText className="h-6 w-6 text-primary" />
@@ -193,7 +273,13 @@ export default function CompanyDashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-500">Completed Interviews</p>
-                    <h3 className="text-2xl font-bold">27</h3>
+                    <h3 className="text-2xl font-bold">
+                      {stats.isLoading ? (
+                        <div className="h-8 w-12 bg-gray-200 rounded animate-pulse"></div>
+                      ) : (
+                        stats.completedInterviews
+                      )}
+                    </h3>
                   </div>
                   <div className="rounded-full bg-primary/10 p-3">
                     <Video className="h-6 w-6 text-primary" />
@@ -206,7 +292,13 @@ export default function CompanyDashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-gray-500">Avg. Score</p>
-                    <h3 className="text-2xl font-bold">84.2</h3>
+                    <h3 className="text-2xl font-bold">
+                      {stats.isLoading ? (
+                        <div className="h-8 w-16 bg-gray-200 rounded animate-pulse"></div>
+                      ) : (
+                        stats.averageScore.toFixed(1)
+                      )}
+                    </h3>
                   </div>
                   <div className="rounded-full bg-primary/10 p-3">
                     <BarChart className="h-6 w-6 text-primary" />

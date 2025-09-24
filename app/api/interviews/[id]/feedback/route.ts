@@ -29,19 +29,19 @@ export async function POST(
       );
     }
 
-    // Calculate overall score using weighted average
+    // Calculate overall score using weighted average with new categories
     const weights = {
-      technicalSkills: 0.80, // 80% weight
-      communication: 0.05,    // 5% weight
-      problemSolving: 0.10,  // 10% weight
-      experience: 0.05       // 5% weight
+      englishCommunication: 0.40, // 40% weight
+      confidence: 0.30,          // 30% weight
+      storytelling: 0.15,        // 15% weight
+      customerHandling: 0.15     // 15% weight
     };
     
     const weightedSum = 
-      feedback.rating.technicalSkills * weights.technicalSkills + 
-      feedback.rating.communication * weights.communication + 
-      feedback.rating.problemSolving * weights.problemSolving + 
-      feedback.rating.experience * weights.experience;
+      feedback.rating.englishCommunication * weights.englishCommunication + 
+      feedback.rating.confidence * weights.confidence + 
+      feedback.rating.storytelling * weights.storytelling + 
+      feedback.rating.customerHandling * weights.customerHandling;
     
     const overallScore = Math.round(weightedSum);
 
@@ -144,10 +144,10 @@ export async function GET(
       return NextResponse.json({
         feedback: {
           rating: {
-            technicalSkills: 0,
-            communication: 0,
-            problemSolving: 0,
-            experience: 0
+            englishCommunication: 0,
+            confidence: 0,
+            storytelling: 0,
+            customerHandling: 0
           },
           summary: "Feedback not yet available for this interview.",
           recommendation: "Pending",
@@ -175,10 +175,10 @@ export async function GET(
     const response = {
       feedback: {
         rating: {
-          technicalSkills: hasFeedbackRating ? (interview.feedback.rating.technicalSkills || 0) : 0,
-          communication: hasFeedbackRating ? (interview.feedback.rating.communication || 0) : 0,
-          problemSolving: hasFeedbackRating ? (interview.feedback.rating.problemSolving || 0) : 0,
-          experience: hasFeedbackRating ? (interview.feedback.rating.experience || 0) : 0
+          englishCommunication: hasFeedbackRating ? (interview.feedback.rating.englishCommunication || 0) : 0,
+          confidence: hasFeedbackRating ? (interview.feedback.rating.confidence || 0) : 0,
+          storytelling: hasFeedbackRating ? (interview.feedback.rating.storytelling || 0) : 0,
+          customerHandling: hasFeedbackRating ? (interview.feedback.rating.customerHandling || 0) : 0
         },
         summary: interview.feedback.summary || "No detailed feedback available.",
         recommendation: interview.feedback.recommendation || "Pending",

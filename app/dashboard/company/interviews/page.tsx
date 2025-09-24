@@ -35,10 +35,10 @@ interface Interview {
 interface InterviewFeedback {
   feedback: {
     rating: {
-      technicalSkills: number
-      communication: number
-      problemSolving: number
-      experience: number
+      englishCommunication: number
+      confidence: number
+      storytelling: number
+      customerHandling: number
     }
     summary: string
     recommendation: string
@@ -298,20 +298,20 @@ export default function InterviewsPage() {
                     <h4 className="font-medium mb-2">Ratings</h4>
                     <div className="space-y-2">
                       <div className="flex justify-between">
-                        <span className="text-gray-500 dark:text-gray-400">Technical Skills</span>
-                        <span>{feedback.feedback.rating.technicalSkills}/100</span>
+                        <span className="text-gray-500 dark:text-gray-400">English Communication</span>
+                        <span>{feedback.feedback.rating.englishCommunication}/100</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-500 dark:text-gray-400">Communication</span>
-                        <span>{feedback.feedback.rating.communication}/100</span>
+                        <span className="text-gray-500 dark:text-gray-400">Confidence</span>
+                        <span>{feedback.feedback.rating.confidence}/100</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-500 dark:text-gray-400">Problem Solving</span>
-                        <span>{feedback.feedback.rating.problemSolving}/100</span>
+                        <span className="text-gray-500 dark:text-gray-400">Storytelling</span>
+                        <span>{feedback.feedback.rating.storytelling}/100</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-gray-500 dark:text-gray-400">Experience</span>
-                        <span>{feedback.feedback.rating.experience}/100</span>
+                        <span className="text-gray-500 dark:text-gray-400">Customer Handling</span>
+                        <span>{feedback.feedback.rating.customerHandling}/100</span>
                       </div>
                     </div>
                   </div>

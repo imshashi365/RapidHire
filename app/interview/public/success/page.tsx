@@ -9,10 +9,10 @@ import Link from "next/link"
 import { Progress } from "@/components/ui/progress"
 
 interface FeedbackData {
-  technicalSkills?: number
-  communication?: number
-  problemSolving?: number
-  experience?: number
+  englishCommunication?: number
+  confidence?: number
+  storytelling?: number
+  customerHandling?: number
   summary?: string
   strengths?: string[]
   areasForImprovement?: string[]
@@ -87,46 +87,46 @@ export default function PublicInterviewSuccess() {
                 </div>
               )}
               
-              {(feedback.technicalSkills || feedback.communication || 
-                feedback.problemSolving || feedback.experience) && (
+              {(feedback.englishCommunication || feedback.confidence || 
+                feedback.storytelling || feedback.customerHandling) && (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                  {feedback.technicalSkills && (
+                  {feedback.englishCommunication !== undefined && (
                     <div className="bg-gray-50 p-3 rounded">
                       <div className="flex justify-between mb-1">
-                        <span className="text-sm font-medium">Technical Skills</span>
-                        <span className="text-sm font-medium">{feedback.technicalSkills}/10</span>
+                        <span className="text-sm font-medium">English Communication</span>
+                        <span className="text-sm font-medium">{feedback.englishCommunication}/10</span>
                       </div>
-                      <Progress value={feedback.technicalSkills * 10} className="h-2" />
+                      <Progress value={feedback.englishCommunication * 10} className="h-2" />
                     </div>
                   )}
                   
-                  {feedback.communication && (
+                  {feedback.confidence !== undefined && (
                     <div className="bg-gray-50 p-3 rounded">
                       <div className="flex justify-between mb-1">
-                        <span className="text-sm font-medium">Communication</span>
-                        <span className="text-sm font-medium">{feedback.communication}/10</span>
+                        <span className="text-sm font-medium">Confidence</span>
+                        <span className="text-sm font-medium">{feedback.confidence}/10</span>
                       </div>
-                      <Progress value={feedback.communication * 10} className="h-2" />
+                      <Progress value={feedback.confidence * 10} className="h-2" />
                     </div>
                   )}
                   
-                  {feedback.problemSolving && (
+                  {feedback.storytelling !== undefined && (
                     <div className="bg-gray-50 p-3 rounded">
                       <div className="flex justify-between mb-1">
-                        <span className="text-sm font-medium">Problem Solving</span>
-                        <span className="text-sm font-medium">{feedback.problemSolving}/10</span>
+                        <span className="text-sm font-medium">Storytelling</span>
+                        <span className="text-sm font-medium">{feedback.storytelling}/10</span>
                       </div>
-                      <Progress value={feedback.problemSolving * 10} className="h-2" />
+                      <Progress value={feedback.storytelling * 10} className="h-2" />
                     </div>
                   )}
                   
-                  {feedback.experience && (
+                  {feedback.customerHandling !== undefined && (
                     <div className="bg-gray-50 p-3 rounded">
                       <div className="flex justify-between mb-1">
-                        <span className="text-sm font-medium">Experience</span>
-                        <span className="text-sm font-medium">{feedback.experience}/10</span>
+                        <span className="text-sm font-medium">Customer Handling</span>
+                        <span className="text-sm font-medium">{feedback.customerHandling}/10</span>
                       </div>
-                      <Progress value={feedback.experience * 10} className="h-2" />
+                      <Progress value={feedback.customerHandling * 10} className="h-2" />
                     </div>
                   )}
                 </div>

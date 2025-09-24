@@ -108,7 +108,7 @@ export default function FeedbackPage() {
                             <CardTitle>{interview.position}</CardTitle>
                             <CardDescription>{interview.company}</CardDescription>
                           </div>
-                          <Badge variant="success">Feedback Received</Badge>
+                          <Badge variant="secondary">Feedback Received</Badge>
                         </div>
                       </CardHeader>
                       <CardContent>

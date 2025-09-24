@@ -9,10 +9,10 @@ import { ObjectId } from 'mongodb'
 const fallbackFeedback = {
   feedback: {
     rating: {
-      technicalSkills: 70,
-      communication: 70,
-      problemSolving: 70,
-      experience: 70
+      englishCommunication: 70,
+      confidence: 70,
+      storytelling: 70,
+      customerHandling: 70
     },
     summary: "The interview was completed successfully. The candidate demonstrated good communication skills and technical knowledge. Further evaluation may be needed for a comprehensive assessment.",
     recommendation: "Yes",
@@ -28,10 +28,10 @@ interface ApiError extends Error {
 interface FeedbackResponse {
   feedback: {
     rating: {
-      technicalSkills: number;
-      communication: number;
-      problemSolving: number;
-      experience: number;
+      englishCommunication: number;
+      confidence: number;
+      storytelling: number;
+      customerHandling: number;
     };
     summary: string;
     recommendation: string;
@@ -79,58 +79,66 @@ async function generateFeedbackWithGemini(conversation: string | any, position?:
     const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY)
 
     // Use Gemini Flash for structured responses
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" })
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" })
 
     // Prepare the prompt with stricter evaluation criteria
-    const prompt = `You are an AI expert at evaluating job interviews with a very strict evaluation criteria. Your goal is to filter out approximately 99% of candidates by maintaining extremely high standards. Analyze this interview conversation between an AI interviewer and a candidate for ${positionTitle}.
+    const prompt = `You are an AI expert specializing in ultra-strict evaluation of sales/customer-facing interview performance. Your mission is to filter out 95-99% of candidates by applying the HIGHEST standards of communication, persuasion, and professionalism. Only exceptional candidates with near-native fluency, high confidence, and strong storytelling should pass.
 
-Position Details:
-- Experience Required: ${minExperience} to ${maxExperience} years
-- Required Skills: ${requirements}
-- Key Questions: ${questions}
+    Position Details:
+    - Role: Sales Executive / Customer Success
+    - Experience Required: ${minExperience} to ${maxExperience} years
+    - Required Skills: English speaking, communication, confidence, storytelling, customer handling
+    - Key Questions: ${questions}
+    
+    Evaluation Framework:
+    1. Interview Completion & Response Quality:
+       - Did the candidate answer ALL questions fully and coherently?
+       - Were answers well-structured, fluent, and professional?
+       - Was the candidate consistently confident (no hesitation, filler words, or broken sentences)?
+       - Did they demonstrate persuasive storytelling and real customer-facing presence?
+       - Were answers aligned with real-world client challenges and SaaS product sales?
+    
+    2. STRICT Scoring Rubric (0–100 scale):
+       - English Fluency & Communication (40% weight):
+         * Must show flawless grammar, natural flow, and professional articulation
+         * Broken English, long pauses, or unclear phrases = automatic low score
+       - Confidence & Presence (25% weight):
+         * Strong voice, assertiveness, and conviction in delivery required
+         * Hesitation, “um/uh/sorry” = very low score
+       - Storytelling & Persuasion (25% weight):
+         * Must use engaging, persuasive, and structured examples
+         * Bland or mechanical answers = near-zero score
+       - Customer Handling Relevance (10% weight):
+         * Must show empathy, problem-solving, and SaaS-specific client handling
+         * Generic/unrelated answers = very low score
+    
+    3. Pass/Fail Logic:
+       - Candidates scoring below 70 in ANY category are automatically rejected
+       - Only candidates with total weighted average ≥85 AND no major weaknesses should receive a "Yes"
+       - Recommendation must be binary: "Yes" or "No" with no soft approvals
+    
+    Output Format:
+    Respond ONLY with a valid JSON object in this exact structure, no additional text:
+    {
+      "feedback": {
+        "rating": {
+          "englishCommunication": <number 0-100>,
+          "confidence": <number 0-100>,
+          "storytelling": <number 0-100>,
+          "customerHandling": <number 0-100>
+        },
+        "summary": "<concise 3-line brutally honest summary>",
+        "recommendation": "<Yes/No>",
+        "recommendationMsg": "<one-line decisive reason>"
+      }
+    }
+    
+    Interview Conversation:
+    ${conversationText}`
 
-Evaluation Criteria:
-1. Interview Completion & Response Quality:
-   - Full completion of interview
-   - Quality and depth of answers
-   - Specific examples provided
-   - Relevance to position
-
-2. Rating Criteria (0-100) with STRICT evaluation:
-   - Technical Skills (80% weight): Knowledge depth, expertise, and ability to solve complex problems
-   - Communication (5% weight): Clarity, professionalism, and ability to articulate thoughts
-   - Problem Solving (10% weight): Approach, methodology, and ability to think critically
-   - Experience (5% weight): Relevance and depth of past experience
-
-IMPORTANT GUIDELINES:
-- Be extremely critical in your evaluation
-- Only candidates with exceptional performance should receive high scores
-- Technical skills are the primary determinant of success
-- A candidate must demonstrate mastery in their technical domain
-- Communication skills should be evaluated based on clarity and precision
-- Problem-solving abilities should be assessed based on approach and methodology
-- Experience should be evaluated based on relevance and depth
-
-IMPORTANT: Respond ONLY with a valid JSON object in this exact format, no additional text:
-{
-  "feedback": {
-    "rating": {
-      "technicalSkills": <number between 0-100>,
-      "communication": <number between 0-100>,
-      "problemSolving": <number between 0-100>,
-      "experience": <number between 0-100>
-    },
-    "summary": "<concise 3-line summary>",
-    "recommendation": "<Yes/No>",
-    "recommendationMsg": "<brief reason>"
-  }
-}
-
-Interview Conversation:
-${conversationText}`
 
     console.log('Making Gemini API request with SDK:', {
-      model: 'gemini-pro',
+      model: 'gemini-2.5-pro',
       promptLength: prompt.length,
     })
 
@@ -138,7 +146,7 @@ ${conversationText}`
     const geminiResult = await model.generateContent(prompt)
     const response = await geminiResult.response
     const feedbackText = response.text()
-    
+
     let feedback: any
     try {
       // Clean up the response text before parsing
@@ -149,13 +157,13 @@ ${conversationText}`
         .replace(/```json/g, '')
         .replace(/```/g, '')
         .trim()
-      
+
       // Try to find a valid JSON object in the response
       const jsonMatch = cleanedText.match(/\{[\s\S]*\}/)
       if (!jsonMatch) {
         throw new Error('No valid JSON object found in response')
       }
-      
+
       feedback = JSON.parse(jsonMatch[0])
     } catch (parseError: unknown) {
       const error = parseError as Error
@@ -229,7 +237,7 @@ export async function POST(request: Request) {
 
     // Check if the interview exists first
     const existingInterview = await db.collection('interviews').findOne({ _id: new ObjectId(interviewId) })
-    
+
     // If interview doesn't exist, create it
     if (!existingInterview) {
       console.log('Interview not found, creating a new record')
@@ -263,21 +271,21 @@ export async function POST(request: Request) {
     try {
       // Process the feedback from Gemini API
       const feedback = await generateFeedbackWithGemini(conversation, position)
-      
+
       // Convert ratings from 1-10 scale to 0-100 scale if needed
-      if (feedback && feedback.feedback && feedback.feedback.rating) {
+      if (feedback?.feedback?.rating) {
         const rating = feedback.feedback.rating
-        if (rating.technicalSkills && rating.technicalSkills <= 10) {
-          rating.technicalSkills = rating.technicalSkills * 10
+        if (rating.englishCommunication && rating.englishCommunication <= 10) {
+          rating.englishCommunication = rating.englishCommunication * 10
         }
-        if (rating.communication && rating.communication <= 10) {
-          rating.communication = rating.communication * 10
+        if (rating.confidence && rating.confidence <= 10) {
+          rating.confidence = rating.confidence * 10
         }
-        if (rating.problemSolving && rating.problemSolving <= 10) {
-          rating.problemSolving = rating.problemSolving * 10
+        if (rating.storytelling && rating.storytelling <= 10) {
+          rating.storytelling = rating.storytelling * 10
         }
-        if (rating.experience && rating.experience <= 10) {
-          rating.experience = rating.experience * 10
+        if (rating.customerHandling && rating.customerHandling <= 10) {
+          rating.customerHandling = rating.customerHandling * 10
         }
       }
 
@@ -300,17 +308,17 @@ export async function POST(request: Request) {
         }
       )
 
-      return NextResponse.json({ 
-        success: true, 
+      return NextResponse.json({
+        success: true,
         message: 'Conversation stored and feedback generated successfully',
-        feedback: feedback.feedback 
+        feedback: feedback.feedback
       })
     } catch (feedbackError) {
       console.error('Error generating feedback:', feedbackError)
-      
+
       // Even if feedback generation fails, we've still stored the conversation
-      return NextResponse.json({ 
-        success: true, 
+      return NextResponse.json({
+        success: true,
         message: 'Conversation stored successfully, but feedback generation failed',
         error: feedbackError instanceof Error ? feedbackError.message : 'Unknown error',
         feedback: fallbackFeedback.feedback
@@ -318,32 +326,32 @@ export async function POST(request: Request) {
     }
   } catch (error) {
     console.error('Error processing interview feedback:', error)
-    return NextResponse.json({ 
+    return NextResponse.json({
       error: 'Failed to process interview feedback',
-      details: error instanceof Error ? error.message : 'Unknown error' 
+      details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
   }
 }
 
 // Helper function to calculate weighted average score
 function calculateWeightedAverageScore(ratings: {
-  technicalSkills: number;
-  communication: number;
-  problemSolving: number;
-  experience: number;
+  englishCommunication: number;
+  confidence: number;
+  storytelling: number;
+  customerHandling: number;
 }) {
   const weights = {
-    technicalSkills: 0.80, // 80% weight  // 70% not 80 %
-    communication: 0.05,    // 5% weight
-    problemSolving: 0.10,  // 10% weight
-    experience: 0.05       // 5% weight
+    englishCommunication: 0.40, // 40% weight
+    confidence: 0.25,          // 25% weight
+    storytelling: 0.25,        // 25% weight
+    customerHandling: 0.10     // 10% weight
   };
-  
-  const weightedSum = 
-    ratings.technicalSkills * weights.technicalSkills + 
-    ratings.communication * weights.communication + 
-    ratings.problemSolving * weights.problemSolving + 
-    ratings.experience * weights.experience;
-  
+
+  const weightedSum =
+    ratings.englishCommunication * weights.englishCommunication +
+    ratings.confidence * weights.confidence +
+    ratings.storytelling * weights.storytelling +
+    ratings.customerHandling * weights.customerHandling;
+
   return Math.round(weightedSum);
 } 

@@ -366,7 +366,7 @@ export default function HomePage() {
             </div>
 
             {/* Job Carousel */}
-            <JobCarousel />
+            {/* <JobCarousel /> */}
 
             {/* Bottom CTA */}
             <div className="mt-16 text-center">
@@ -777,7 +777,7 @@ export default function HomePage() {
               </ul>
             </div>
 
-            <div className="space-y-4">
+            {/* <div className="space-y-4">
               <h4 className="text-lg font-semibold text-white">Contact</h4>
               <ul className="space-y-2">
                 <li>
@@ -790,7 +790,7 @@ export default function HomePage() {
                   Head office: A-51 Sector 16, Noida, U.P. - 201301
                 </li>
               </ul>
-            </div>
+            </div> */}
           </div>
 
           {/* Bottom Section with Social Links and Copyright */}

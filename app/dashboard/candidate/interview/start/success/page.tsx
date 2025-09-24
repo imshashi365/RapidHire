@@ -10,10 +10,10 @@ import { Loader2, RefreshCw } from 'lucide-react'
 interface InterviewFeedback {
   feedback: {
     rating: {
-      technicalSkills: number
-      communication: number
-      problemSolving: number
-      experience: number
+      englishCommunication: number
+      confidence: number
+      storytelling: number
+      customerHandling: number
     }
     summary: string
     recommendation: string
@@ -183,19 +183,19 @@ function FeedbackContent() {
       return feedback.feedback.overallScore;
     }
     
-    // Otherwise calculate it using the weighted formula
+    // Otherwise calculate it using the weighted formula with new weights
     const weights = {
-      technicalSkills: 0.80, // 80% weight
-      communication: 0.05,    // 5% weight
-      problemSolving: 0.10,  // 10% weight
-      experience: 0.05       // 5% weight
+      englishCommunication: 0.40, // 40% weight
+      confidence: 0.30,          // 30% weight
+      storytelling: 0.15,        // 15% weight
+      customerHandling: 0.15     // 15% weight
     };
     
     const weightedSum = 
-      feedback.feedback.rating.technicalSkills * weights.technicalSkills + 
-      feedback.feedback.rating.communication * weights.communication + 
-      feedback.feedback.rating.problemSolving * weights.problemSolving + 
-      feedback.feedback.rating.experience * weights.experience;
+      feedback.feedback.rating.englishCommunication * weights.englishCommunication + 
+      feedback.feedback.rating.confidence * weights.confidence + 
+      feedback.feedback.rating.storytelling * weights.storytelling + 
+      feedback.feedback.rating.customerHandling * weights.customerHandling;
     
     return Math.round(weightedSum);
   };
@@ -301,10 +301,10 @@ function FeedbackContent() {
     
     // Define rating categories with their weights
     const ratingCategories = [
-      { name: 'Technical Skills', value: rating.technicalSkills, weight: '80%', color: 'bg-blue-500' },
-      { name: 'Problem Solving', value: rating.problemSolving, weight: '10%', color: 'bg-green-500' },
-      { name: 'Communication', value: rating.communication, weight: '5%', color: 'bg-yellow-500' },
-      { name: 'Experience', value: rating.experience, weight: '5%', color: 'bg-purple-500' }
+      { name: 'English Communication', value: rating.englishCommunication, weight: '40%', color: 'bg-blue-500' },
+      { name: 'Confidence', value: rating.confidence, weight: '30%', color: 'bg-green-500' },
+      { name: 'Storytelling', value: rating.storytelling, weight: '15%', color: 'bg-yellow-500' },
+      { name: 'Customer Handling', value: rating.customerHandling, weight: '15%', color: 'bg-purple-500' }
     ];
 
     return (

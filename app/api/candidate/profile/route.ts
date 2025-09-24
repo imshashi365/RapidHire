@@ -4,21 +4,45 @@ import { ObjectId } from "mongodb"
 import clientPromise from "@/lib/mongodb"
 import { authOptions } from "@/app/api/auth/[...nextauth]/route"
 
+// This route must be server-side rendered as it uses session and database
+export const dynamic = 'force-dynamic'
+
+// CORS headers
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, PUT, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Content-Type': 'application/json',
+}
+
+// Handle OPTIONS method for CORS preflight
+const handleOptions = () => {
+  return new NextResponse(null, {
+    status: 204,
+    headers: corsHeaders
+  })
+}
+
 export async function GET(req: Request) {
+  // Handle OPTIONS method for CORS
+  if (req.method === 'OPTIONS') {
+    return handleOptions()
+  }
+
   try {
     const session = await getServerSession(authOptions)
     
     if (!session) {
-      return NextResponse.json(
-        { error: "Not authenticated" },
-        { status: 401 }
+      return new NextResponse(
+        JSON.stringify({ error: "Not authenticated" }),
+        { status: 401, headers: corsHeaders }
       )
     }
 
     if (session.user.role !== "candidate") {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 403 }
+      return new NextResponse(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 403, headers: corsHeaders }
       )
     }
 
@@ -41,47 +65,62 @@ export async function GET(req: Request) {
     )
 
     if (!profile) {
-      return NextResponse.json({
-        experience: [],
-        education: [],
-        skills: [],
-        user: {
-          email: session.user.email || "",
-          name: "",
-          phone: "",
-          location: "",
-          website: "",
-          bio: "",
-          avatar: ""
-        }
-      })
+      return new NextResponse(
+        JSON.stringify({
+          experience: [],
+          education: [],
+          skills: [],
+          user: {
+            email: session.user.email || "",
+            name: "",
+            phone: "",
+            location: "",
+            website: "",
+            bio: "",
+            avatar: ""
+          }
+        }),
+        { status: 200, headers: corsHeaders }
+      )
     }
 
-    return NextResponse.json(profile)
-  } catch (error) {
+    return new NextResponse(
+      JSON.stringify(profile),
+      { status: 200, headers: corsHeaders }
+    )
+  } catch (error: unknown) {
     console.error("Get profile error:", error)
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    return new NextResponse(
+      JSON.stringify({ 
+        error: "Internal server error",
+        ...(process.env.NODE_ENV === 'development' && { details: errorMessage })
+      }),
+      { status: 500, headers: corsHeaders }
     )
   }
 }
 
 export async function PUT(req: Request) {
+  // Handle OPTIONS method for CORS
+  if (req.method === 'OPTIONS') {
+    return handleOptions()
+  }
+
   try {
     const session = await getServerSession(authOptions)
     
     if (!session) {
-      return NextResponse.json(
-        { error: "Not authenticated" },
-        { status: 401 }
+      return new NextResponse(
+        JSON.stringify({ error: "Not authenticated" }),
+        { status: 401, headers: corsHeaders }
       )
     }
 
     if (session.user.role !== "candidate") {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 403 }
+      return new NextResponse(
+        JSON.stringify({ error: "Unauthorized" }),
+        { status: 403, headers: corsHeaders }
       )
     }
 
@@ -101,55 +140,73 @@ export async function PUT(req: Request) {
       userId: new ObjectId(session.user.id)
     }
 
-    // First check if the candidate exists
-    const existingCandidate = await db.collection("candidates").findOne({
-      userId: new ObjectId(session.user.id)
-    })
-
-    let result
-    if (!existingCandidate) {
-      // If candidate doesn't exist, create a new profile
-      result = await db.collection("candidates").insertOne({
-        ...updateData,
-        createdAt: now
+    try {
+      // First check if the candidate exists
+      const existingCandidate = await db.collection("candidates").findOne({
+        userId: new ObjectId(session.user.id)
       })
-    } else {
-      // If candidate exists, update the profile
-      result = await db.collection("candidates").updateOne(
-        { userId: new ObjectId(session.user.id) },
-        { $set: updateData }
-      )
-    }
 
-    // Fetch the updated profile
-    const updatedProfile = await db.collection("candidates").findOne(
-      { userId: new ObjectId(session.user.id) },
-      {
-        projection: {
-          _id: 1,
-          experience: 1,
-          education: 1,
-          skills: 1,
-          user: 1,
-          updatedAt: 1
-        }
+      if (!existingCandidate) {
+        // If candidate doesn't exist, create a new profile
+        await db.collection("candidates").insertOne({
+          ...updateData,
+          createdAt: now
+        })
+      } else {
+        // If candidate exists, update the profile
+        await db.collection("candidates").updateOne(
+          { userId: new ObjectId(session.user.id) },
+          { $set: updateData }
+        )
       }
-    )
 
-    if (!updatedProfile) {
-      console.error("Failed to fetch updated profile")
-      return NextResponse.json(
-        { error: "Failed to update profile. Please try again." },
-        { status: 500 }
+      // Fetch the updated profile
+      const updatedProfile = await db.collection("candidates").findOne(
+        { userId: new ObjectId(session.user.id) },
+        {
+          projection: {
+            _id: 1,
+            experience: 1,
+            education: 1,
+            skills: 1,
+            user: 1,
+            updatedAt: 1
+          }
+        }
+      )
+
+      if (!updatedProfile) {
+        console.error("Failed to fetch updated profile")
+        return new NextResponse(
+          JSON.stringify({ error: "Failed to update profile. Please try again." }),
+          { status: 500, headers: corsHeaders }
+        )
+      }
+
+      return new NextResponse(
+        JSON.stringify(updatedProfile),
+        { status: 200, headers: corsHeaders }
+      )
+    } catch (error: unknown) {
+      console.error("Database operation error:", error)
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred'
+      return new NextResponse(
+        JSON.stringify({ 
+          error: "An unexpected error occurred. Please try again.",
+          ...(process.env.NODE_ENV === 'development' && { details: errorMessage })
+        }),
+        { status: 500, headers: corsHeaders }
       )
     }
-
-    return NextResponse.json(updatedProfile)
-  } catch (error) {
-    console.error("Update profile error:", error)
-    return NextResponse.json(
-      { error: "An unexpected error occurred. Please try again." },
-      { status: 500 }
+  } catch (error: unknown) {
+    console.error("Error in profile update:", error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    return new NextResponse(
+      JSON.stringify({ 
+        error: "Failed to process request",
+        ...(process.env.NODE_ENV === 'development' && { details: errorMessage })
+      }),
+      { status: 500, headers: corsHeaders }
     )
   }
-} 
+}

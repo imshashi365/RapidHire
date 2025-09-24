@@ -1,13 +1,11 @@
-let userConfig = undefined
+let userConfig = undefined;
 try {
-
-  userConfig = await import('./v0-user-next.config.mjs')
+  userConfig = await import('./v0-user-next.config.mjs');
 } catch (e) {
   try {
-
     userConfig = await import("./v0-user-next.config");
   } catch (innerError) {
-
+    // Ignore if no user config is found
   }
 }
 
@@ -19,40 +17,25 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-
-  output: process.env.NODE_ENV === 'production' ? 'export' : undefined,
+  // Removed static export since we're using dynamic API routes
+  output: undefined,
   images: {
-    unoptimized: true, // Required for static exports
+    // Using optimized images for better performance
+    domains: ['localhost', 'rapidhire.example.com'], // Add your domain here
   },
   experimental: {
     webpackBuildWorker: true,
     parallelServerCompiles: true,
     parallelServerBuildTraces: true,
   },
-
-  exportPathMap: async function() {
-    return {
-      '/': { page: '/' },
-      '/login': { page: '/login' },
-      '/register': { page: '/register' },
-
-    };
-  },
-  // Disable static optimization for API routes
-  api: {
-    bodyParser: {
-      sizeLimit: '1mb',
-    },
-    externalResolver: true,
-  },
-
   reactStrictMode: true,
   // Configure webpack
   webpack: (config, { isServer }) => {
-
+    // Add any custom webpack configurations here
     return config;
   },
+  // API route configurations should be handled in route.ts files in the app directory
   ...(userConfig?.default || {})
-}
+};
 
-export default nextConfig
+export default nextConfig;

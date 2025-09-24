@@ -40,16 +40,24 @@ export class VapiClient {
   }
 
   public async createInterviewAssistant(interview: Interview) {
-    const requirements = interview.position.requirements || []
-    const companyName = interview.position.companyName || "Unknown Company"
-    
+    const requirements = typeof interview.position === 'string'
+      ? []
+      : interview.position.requirements || []
+    const companyName = typeof interview.position === 'string'
+      ? "Unknown Company"
+      : interview.position.companyName || "Unknown Company"
+
+      const positionTitle = typeof interview.position === 'string'
+      ? interview.position
+      : interview.position.title || 'Interview'
+
     return this.makeRequest("/assistants", {
       method: "POST",
       body: JSON.stringify({
-        name: `Interview Assistant - ${interview.position.title}`,
+        name: `Interview Assistant - ${positionTitle}`,
         model: "gpt-4",
         voice: "alloy",
-        systemPrompt: `You are an AI interviewer for the position of ${interview.position.title} at ${companyName}. 
+        systemPrompt: `You are an AI interviewer for the position of ${positionTitle} at ${companyName}. 
         The job requirements are: ${requirements.join(", ")}.
         Your role is to conduct a professional interview and evaluate the candidate's responses.
         Ask relevant questions and provide feedback based on their answers.

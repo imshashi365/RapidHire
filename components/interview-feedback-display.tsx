@@ -7,10 +7,10 @@ import { CheckCircle, XCircle } from "lucide-react";
 interface FeedbackDisplayProps {
   feedback: {
     rating: {
-      technicalSkills: number;
-      communication: number;
-      problemSolving: number;
-      experience: number;
+      englishCommunication: number;
+      confidence: number;
+      storytelling: number;
+      customerHandling: number;
     };
     summary: string;
     recommendation: string;
@@ -19,15 +19,21 @@ interface FeedbackDisplayProps {
 }
 
 export function InterviewFeedbackDisplay({ feedback }: FeedbackDisplayProps) {
-  // Calculate overall score
-  const averageRating = (
-    feedback.rating.technicalSkills +
-    feedback.rating.communication +
-    feedback.rating.problemSolving +
-    feedback.rating.experience
-  ) / 4;
+  // Calculate overall score using weighted average
+  const weights = {
+    englishCommunication: 0.40, // 40% weight
+    confidence: 0.30,          // 30% weight
+    storytelling: 0.15,        // 15% weight
+    customerHandling: 0.15     // 15% weight
+  };
   
-  const overallScore = Math.round(averageRating * 10); // Convert to score out of 100
+  const weightedSum = 
+    feedback.rating.englishCommunication * weights.englishCommunication + 
+    feedback.rating.confidence * weights.confidence + 
+    feedback.rating.storytelling * weights.storytelling + 
+    feedback.rating.customerHandling * weights.customerHandling;
+    
+  const overallScore = Math.round(weightedSum);
   
   return (
     <Card className="w-full">
@@ -50,37 +56,40 @@ export function InterviewFeedbackDisplay({ feedback }: FeedbackDisplayProps) {
         {/* Skill Ratings */}
         <div className="space-y-3">
           <h3 className="font-medium">Skill Assessment</h3>
-          
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-sm">Technical Skills</span>
-              <span className="font-medium">{feedback.rating.technicalSkills}/10</span>
+              <span className="text-sm">English Communication</span>
+              <span className="font-medium">{feedback.rating.englishCommunication}/100</span>
             </div>
-            <Progress value={feedback.rating.technicalSkills * 10} className="h-1" />
+            <Progress value={feedback.rating.englishCommunication} className="h-1" />
+            <div className="text-xs text-gray-500 text-right">Weight: 40%</div>
           </div>
           
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-sm">Communication</span>
-              <span className="font-medium">{feedback.rating.communication}/10</span>
+              <span className="text-sm">Confidence</span>
+              <span className="font-medium">{feedback.rating.confidence}/100</span>
             </div>
-            <Progress value={feedback.rating.communication * 10} className="h-1" />
+            <Progress value={feedback.rating.confidence} className="h-1" />
+            <div className="text-xs text-gray-500 text-right">Weight: 30%</div>
           </div>
           
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-sm">Problem Solving</span>
-              <span className="font-medium">{feedback.rating.problemSolving}/10</span>
+              <span className="text-sm">Storytelling</span>
+              <span className="font-medium">{feedback.rating.storytelling}/100</span>
             </div>
-            <Progress value={feedback.rating.problemSolving * 10} className="h-1" />
+            <Progress value={feedback.rating.storytelling} className="h-1" />
+            <div className="text-xs text-gray-500 text-right">Weight: 15%</div>
           </div>
           
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <span className="text-sm">Experience</span>
-              <span className="font-medium">{feedback.rating.experience}/10</span>
+              <span className="text-sm">Customer Handling</span>
+              <span className="font-medium">{feedback.rating.customerHandling}/100</span>
             </div>
-            <Progress value={feedback.rating.experience * 10} className="h-1" />
+            <Progress value={feedback.rating.customerHandling} className="h-1" />
+            <div className="text-xs text-gray-500 text-right">Weight: 15%</div>
           </div>
         </div>
         

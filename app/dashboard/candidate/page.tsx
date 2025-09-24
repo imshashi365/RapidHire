@@ -58,18 +58,18 @@ export default function CandidateDashboard() {
           {mockInterviews.some((interview) => interview.status === "Invited") && (
             <div className="mb-6 rounded-lg border bg-primary/10 p-4">
               <div className="flex items-center gap-3">
-                <AlertCircle className="h-5 w-5 text-primary" />
-                <div className="flex-1">
+                {/* <AlertCircle className="h-5 w-5 text-primary" /> */}
+                {/* <div className="flex-1">
                   <h3 className="font-medium">You have a pending interview invitation</h3>
                   <p className="text-sm text-gray-500">Complete your interview for Innovate Labs within 3 days</p>
-                </div>
-                <Button><a href="#">Start Interview</a> </Button>
+                </div> */}
+                {/* <Button><a href="#">Start Interview</a> </Button> */}
                 {/* <Button><a href="http://localhost:3000/dashboard/candidate/interview/start">Start Interview</a> </Button> */}
               </div>
             </div>
           )}
 
-          <Tabs defaultValue="upcoming" className="space-y-4">
+          {/* <Tabs defaultValue="upcoming" className="space-y-4">
             <TabsList>
               <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
               <TabsTrigger value="completed">Completed</TabsTrigger>
@@ -157,7 +157,7 @@ export default function CandidateDashboard() {
                           <CardTitle>{interview.position}</CardTitle>
                           <CardDescription>{interview.company}</CardDescription>
                         </div>
-                        <Badge variant="success">Completed</Badge>
+                        <Badge variant="secondary">Completed</Badge>
                       </div>
                     </CardHeader>
                     <CardContent>
@@ -224,7 +224,7 @@ export default function CandidateDashboard() {
                             <Badge
                               variant={
                                 interview.status === "Completed"
-                                  ? "success"
+                                  ? "secondary"
                                   : interview.status === "Scheduled"
                                     ? "outline"
                                     : "secondary"
@@ -250,7 +250,7 @@ export default function CandidateDashboard() {
                 </div>
               </div>
             </TabsContent>
-          </Tabs>
+          </Tabs> */}
         </main>
       </div>
     </div>

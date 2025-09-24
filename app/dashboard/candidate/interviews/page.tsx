@@ -278,9 +278,9 @@ export default function InterviewsPage() {
                           <div className="mt-2 text-sm text-gray-500">
                             Company: {getPositionField(interview.position, 'companyName', 'No Company')}
                           </div>
-                          <div className="mt-1 text-sm text-gray-500">
+                          {/* <div className="mt-1 text-sm text-gray-500">
                             Last Date to Complete: {formatDate(interview.lastDate)}
-                          </div>
+                          </div> */}
                         </div>
                         <Badge variant={getBadgeVariant(interview.status)}>
                           {interview.status.charAt(0).toUpperCase() + interview.status.slice(1)}
@@ -302,8 +302,8 @@ export default function InterviewsPage() {
                           </>
                         ) : (
                           <div className="flex items-center gap-2 text-sm text-gray-500">
-                            <Calendar className="h-4 w-4" />
-                            <span>Interview date not scheduled yet</span>
+                            {/* <Calendar className="h-4 w-4" /> */}
+                            {/* <span>Interview date not scheduled yet</span> */}
                           </div>
                         )}
                         <div className="flex items-center gap-2 text-sm">
