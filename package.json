@@ -85,6 +85,7 @@
     "snappy": "latest",
     "socks": "latest",
     "sonner": "^1.7.1",
+    "swr": "^2.3.6",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
     "together-ai": "^0.15.0",

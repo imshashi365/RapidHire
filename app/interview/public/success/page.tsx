@@ -1,12 +1,13 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { CheckCircle, Star } from "lucide-react"
 import Link from "next/link"
 import { Progress } from "@/components/ui/progress"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface FeedbackData {
   englishCommunication?: number
@@ -20,7 +21,7 @@ interface FeedbackData {
   recommendationJustification?: string
 }
 
-export default function PublicInterviewSuccess() {
+function PublicInterviewContent() {
   const searchParams = useSearchParams()
   const interviewId = searchParams.get("interviewId")
   const [feedback, setFeedback] = useState<FeedbackData | null>(null)
@@ -192,5 +193,28 @@ export default function PublicInterviewSuccess() {
         </CardFooter>
       </Card>
     </div>
+  )
+}
+
+export default function PublicInterviewSuccess() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
+        <Card className="w-full max-w-2xl">
+          <CardHeader className="text-center">
+            <Skeleton className="h-16 w-16 rounded-full mx-auto mb-4" />
+            <Skeleton className="h-8 w-48 mx-auto mb-2" />
+            <Skeleton className="h-4 w-64 mx-auto" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-4 w-full max-w-md mx-auto mb-2" />
+            <Skeleton className="h-4 w-full max-w-sm mx-auto mb-6" />
+            <Skeleton className="h-32 w-full rounded-md" />
+          </CardContent>
+        </Card>
+      </div>
+    }>
+      <PublicInterviewContent />
+    </Suspense>
   )
 }
